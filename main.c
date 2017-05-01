@@ -5,26 +5,14 @@
 /// Main method of the prototype
 /// Remember in order to get the documentation run
 /// > doxygen configfile
-/// \return
-
-double dRand(double fMin, double fMax)
-{
-    double f = (double)rand() / RAND_MAX;
-    return fMin + f * (fMax - fMin);
-}
+/// It calls Atomicity_Test to test access to a critical section using Transactional Memory and
+/// Transactions_Test to test how to recover from errors using Transactional Memory.
+/// \return 0
 int main(){
     srand(time(NULL));
 
-    //Atomicity_Test(10, 0);
+    Atomicity_Test(10, 0);
     Transactions_Test(5,1);
-
-//    int i;
-//    int r = rand() % 100;
-//    for (i = 0; i < 1000; i++){
-//        r = rand() % 100;
-//        if(r < 2)
-//            printf("%d ", r);
-//    }
 
     return 0;
 }

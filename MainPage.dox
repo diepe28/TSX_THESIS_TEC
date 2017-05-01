@@ -1,0 +1,21 @@
+/**
+\mainpage Using Transactional Memory to Recover from Soft Errors
+
+\section intro_sec Introduction
+
+This is a small prototype that that uses the Intel version (TSX) of Hardware Transactional Memory (HTM) as a mechanism to recover from soft errors. Regions of code prone to errors are wrapped around HTM transactions and replication is used to detect when an error has ocurred; if so a transaction_abort is explicitly called in ordered to revert any calculation and cache registers to the state when the transaction began. After this the region of code where the errors happened is retried a fixed number of times before trying it again without transactions. 
+
+\section about_sec About this Project
+
+Costa Rica Institute Of Technology. 
+
+Master's Program in Computer Science.
+
+Selected Investigation Subject.
+
+Student: Diego Simon Perez Arroyo.
+
+Professor: Ph.D Cesar Garita.
+
+May 2017.
+*/
