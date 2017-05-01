@@ -14,6 +14,6 @@ int THREAD_UTILS_GetThreadIndex(pthread_t threadId);
 void THREAD_UTILS_CreateThreads();
 void THREAD_UTILS_DestroyThreads();
 int THREAD_UTILS_GetNumThreads();
-int THREAD_UTILS_SetNumThreads(int n);
+void THREAD_UTILS_SetNumThreads(int n);
 
 #endif //THREAD_UTILS_H

@@ -4,6 +4,9 @@
 pthread_t ** THREAD_UTILS_Threads;
 int THREAD_UTILS_NUM_THREADS;
 
+/// Starts with pthread_create each thread in THREAD_UTILS_Threads, and performs a pthread_join on each one.
+/// \param _start_routine the function each thread executed
+/// \param _thread_routine_args arguments to the _start_routine
 void THREAD_UTILS_StartThreads(void * _start_routine, void * _thread_routine_args) {
 
     int j, err;
@@ -14,6 +17,11 @@ void THREAD_UTILS_StartThreads(void * _start_routine, void * _thread_routine_arg
         pthread_join(*THREAD_UTILS_Threads[j], NULL);
 }
 
+/// Returns the range on which each thread must work on.
+/// \param threadIndex the index of the current thread in THREAD_UTILS_Threads
+/// \param endIndex an out parameter that will hold the end of the range
+/// \param numValues the number of values to process work array
+/// \return start index of the range to work.
 int THREAD_UTILS_GetRangeFromThreadId(int threadIndex, int* endIndex, int numValues){
     int valuesPerThread = numValues / THREAD_UTILS_NUM_THREADS;
     int startIndex;
@@ -24,6 +32,9 @@ int THREAD_UTILS_GetRangeFromThreadId(int threadIndex, int* endIndex, int numVal
     return startIndex;
 }
 
+/// Gets using the threadId the index of such thread in THREAD_UTILS_Threads
+/// \param threadId the id of the given thread
+/// \return the index of the thread in THREAD_UTILS_Threads
 int THREAD_UTILS_GetThreadIndex(pthread_t threadId) {
     int i;
     for (i = 0; i < THREAD_UTILS_NUM_THREADS; i++) {
@@ -33,6 +44,7 @@ int THREAD_UTILS_GetThreadIndex(pthread_t threadId) {
     return 0;
 }
 
+/// Initialize the THREAD_UTILS_Threads array with THREAD_UTILS_NUM_THREADS dimensions
 void THREAD_UTILS_CreateThreads(){
     int i = 0;
 
@@ -43,6 +55,8 @@ void THREAD_UTILS_CreateThreads(){
 
 }
 
+/// Frees the memory of each thread in THREAD_UTILS_Threads and the array itself
+
 void THREAD_UTILS_DestroyThreads(){
     int i = 0;
 
@@ -52,10 +66,13 @@ void THREAD_UTILS_DestroyThreads(){
     free(THREAD_UTILS_Threads);
 }
 
+/// Returns the number of threads allocated
 int THREAD_UTILS_GetNumThreads(){
     return THREAD_UTILS_NUM_THREADS;
 }
 
-int THREAD_UTILS_SetNumThreads(int n){
+/// Sets the number of thread to be created and used. Must be called before THREAD_UTILS_CreateThreads
+/// \param n the new number of threads
+void THREAD_UTILS_SetNumThreads(int n){
     THREAD_UTILS_NUM_THREADS = n;
 }
