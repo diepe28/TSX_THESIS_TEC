@@ -11,6 +11,7 @@ extern int const FOR_VALUE;
 extern int values[NUM_VALUES];
 extern double * results;
 extern double const ERROR_PROBABILITY;
+extern int injectedErrors;
 
 void* Atomicity_incrementCounterWithTM(void *arg);
 
@@ -19,6 +20,8 @@ void* Atomicity_incrementCounter(void *arg);
 int Atomicity_Test(int nTimes,int usingTM) ;
 
 void Transactions_InitValues();
+
+void Transactions_DestroyValues();
 
 double Transactions_CalculateValue(int i);
 

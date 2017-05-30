@@ -11,9 +11,15 @@ void THREAD_UTILS_StartThreads(void * _start_routine, void * _thread_routine_arg
 
     int j, err;
 
-    for (j = 0; j < THREAD_UTILS_NUM_THREADS; j++)
+    // Creates THREAD_UTILS_NUM_THREADS-1 threads, starts at 1 because of the main thread
+    for (j = 1; j < THREAD_UTILS_NUM_THREADS; j++)
         err = pthread_create(THREAD_UTILS_Threads[j], NULL, _start_routine, _thread_routine_args);
-    for (j = 0; j < THREAD_UTILS_NUM_THREADS; j++)
+
+    // Executes the routine in main thread
+    ((void (*)(void)) _start_routine)();
+
+    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+    for (j = 1; j < THREAD_UTILS_NUM_THREADS; j++)
         pthread_join(*THREAD_UTILS_Threads[j], NULL);
 }
 
@@ -46,9 +52,13 @@ int THREAD_UTILS_GetThreadIndex(pthread_t threadId) {
 
 /// Initialize the THREAD_UTILS_Threads array with THREAD_UTILS_NUM_THREADS dimensions
 void THREAD_UTILS_CreateThreads(){
-    int i = 0;
+    int i = 1;
 
     THREAD_UTILS_Threads = (pthread_t **) malloc(sizeof(pthread_t*) * THREAD_UTILS_NUM_THREADS);
+
+    // main pthread id
+    pthread_t mainThread = pthread_self();
+    THREAD_UTILS_Threads[0] = &mainThread;
 
     for (; i < THREAD_UTILS_NUM_THREADS; i++)
         THREAD_UTILS_Threads[i] = (pthread_t*) malloc(sizeof(pthread_t));
@@ -56,9 +66,8 @@ void THREAD_UTILS_CreateThreads(){
 }
 
 /// Frees the memory of each thread in THREAD_UTILS_Threads and the array itself
-
 void THREAD_UTILS_DestroyThreads(){
-    int i = 0;
+    int i = 1;
 
     for (; i < THREAD_UTILS_NUM_THREADS; i++)
         free(THREAD_UTILS_Threads[i]);

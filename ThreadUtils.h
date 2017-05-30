@@ -4,6 +4,8 @@
 #include <sys/types.h>
 #include<pthread.h>
 #include <stdlib.h>
+#include<stdio.h>
+#include <unistd.h>
 
 extern pthread_t ** THREAD_UTILS_Threads;
 extern int THREAD_UTILS_NUM_THREADS;

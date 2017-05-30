@@ -1,5 +1,4 @@
 #include "TestTSX.h"
-#include<stdio.h>
 
 //http://pmarlier.free.fr/gcc-tm-tut.html
 //http://www-users.cs.umn.edu/~boutcher/stm/
@@ -10,7 +9,11 @@ long globalCount = 0;
 int const FOR_VALUE = 9999;
 int values[NUM_VALUES];
 double * results;
-double const ERROR_PROBABILITY = 3;
+double const ERROR_PROBABILITY = 5;
+/// Number of artificially injected errors
+int injectedErrors = 0;
+int transactionsFailed = 0;
+int errorsDetected = 0;
 
 /// The function each threads executes when testing atomicity using transactional memory
 /// \param arg the thread argument
@@ -85,10 +88,13 @@ int Atomicity_Test(int nTimes,int usingTM) {
 ////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////
 
-/// Initializes all values requires for testing recovery from error using transactional memory
+/// Initializes all values required for testing recovery from error using transactional memory
 /// \return
 void Transactions_InitValues(){
     results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
+    injectedErrors = 0;
+    transactionsFailed = 0;
+    errorsDetected = 0;
 
     int i = 0;
     for (; i < NUM_VALUES; i++) {
@@ -96,6 +102,12 @@ void Transactions_InitValues(){
     }
     for(i = 0; i < THREAD_UTILS_GetNumThreads(); i++)
         results[i] = 0;
+}
+
+/// Destroyes all values that were allocated in Transaction_InitValues
+/// \return
+void Transactions_DestroyValues(){
+    free(results);
 }
 
 double fRand(double fMin, double fMax)
@@ -112,11 +124,15 @@ double fRand(double fMin, double fMax)
 /// \return Most of times (using the given probability) the correct value for n value.
 double Transactions_CalculateValue(int n) {
     int r = rand() % 100;
-    r = r < ERROR_PROBABILITY? rand() % 100 : r;
-    double result;
+    //r = r < ERROR_PROBABILITY? rand() % 100 : r;
+    //int r = 5;
+    double result = 1;
 
-    result = 1;
-    return r < ERROR_PROBABILITY? result + 1 : result;
+    if (r < ERROR_PROBABILITY) {
+        result = 2;
+    }
+
+    return result;
 }
 
 ///
@@ -124,34 +140,42 @@ double Transactions_CalculateValue(int n) {
 /// \param args arguments for the function
 /// \return NULL
 void* Transactions_FuncWithTM(void *args) {
-    int i, startIndex = 0, endIndex = 0, transactionStatus, numErrors = 0;
-    double result = 0, v1, v2;
-    int threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
+    int i, startIndex = 0, endIndex = 0, transactionStatus, v1 = 0, v2 = 0,
+            threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self()), retriedTimes = 0;
+    double result = 0;
 
     startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES);
     for (i = startIndex; i < endIndex; i++) {
         transactionStatus = _xbegin();
-        if (transactionStatus == _XBEGIN_STARTED) {
-            v1 = Transactions_CalculateValue(values[i]);
-            v2 = Transactions_CalculateValue(values[i]);
+        if (transactionStatus  == _XBEGIN_STARTED) {
+            v1 = (int) Transactions_CalculateValue(values[i]);
+            v2 = (int) Transactions_CalculateValue(values[i]);
 
             if (v1 != v2) {
-                _xabort(9);
+                _xabort(0xff);
             }
             result += v1;
-            numErrors = 0;
             _xend();
+            retriedTimes = 0;
         } else {
             //... non-transactional fallback path...
-            //printf("Transaction creation failed: %s\n", TSX_GetTransactionAbortMessage(transactionStatus));
-            if(numErrors++ < 5000) {
-                i--;
-                continue; // retry
+            transactionsFailed++;
+
+//            char * message = TSX_GetTransactionAbortMessage(transactionStatus);
+//            printf("Transaction creation failed: %s , errors detected %d , %d, %d\n", message, errorsDetected, v1, v2);
+//            free(message);
+
+            // this executes the rand() so the next iteration does not fail again.
+            Transactions_CalculateValue(values[i]); Transactions_CalculateValue(values[i]);
+
+            if(TSX_WasExplicitAbort(transactionStatus) && retriedTimes++ < 15 ){
+                i--; // retry iteration
+                injectedErrors++;
             }
             else{
-                numErrors = 0;
-                result += Transactions_CalculateValue(values[i]);;
+                result += Transactions_CalculateValue(values[i]);
             }
+
         }
 
     }
@@ -190,6 +214,8 @@ void Transactions_Test(int numThreads, int usingTM){
     }
 
     THREAD_UTILS_DestroyThreads();
-    free(results);
+    Transactions_DestroyValues();
+
+    printf("Injected errors: %d, detected: %d, failed transactions: %d \n", injectedErrors, errorsDetected, transactionsFailed);
     printf("The final result is: %f\n", finalResult);
 }
