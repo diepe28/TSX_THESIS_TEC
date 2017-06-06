@@ -15,13 +15,13 @@ int calcValue() {
 }
 
 void TestFunction(){
-    int i, v1 = 5, v2 = 5, status, n = 100, result = 0, errorsDetected;
+    int i, v1 = 5, v2 = 5, status, n = 1000, result = 0, errorsDetected;
     int n_tries, max_tries = 5;
 
     for(i =0; i < n; i++){
         errorsDetected = 0;
 
-        printf("Executing iteration %d result %d \n", i, result);
+        //printf("Executing iteration %d result %d \n", i, result);
         for (n_tries = 0; n_tries < max_tries; n_tries++)
         {
             status = _xbegin();
@@ -33,15 +33,15 @@ void TestFunction(){
             v2 = calcValue();
 
             result += v1;
-            if(v1 != v2){
+            if(v1 == 2 || v2 == 2){
                 _xabort(0xff);
             }
 
             _xend();
         }else{//fallback path
-            if((status & _XABORT_EXPLICIT) && (_XABORT_CODE(status) == 0xff)){
+            if(TSX_IsRetryPossible(status) || TSX_WasExplicitAbort(status)){
                 // everything is reverted to the previous state, even the rand() function will be the same
-                // printf("Transaction aborted! value of result %d \n", result);
+                //printf("Transaction aborted! value of result %d \n", result);
                 i--; // try again
                 // this is necessary because otherwise in the next iteration the result
                 // will be the same as the one that failed

@@ -151,12 +151,13 @@ void* Transactions_FuncWithTM(void *args) {
             v1 = (int) Transactions_CalculateValue(values[i]);
             v2 = (int) Transactions_CalculateValue(values[i]);
 
-            if (v1 != v2) {
+            //if (v1 != v2) {
+            if (v1 == 2 || v2 == 2) {
                 _xabort(0xff);
             }
             result += v1;
-            _xend();
             retriedTimes = 0;
+            _xend();
         } else {
             //... non-transactional fallback path...
             transactionsFailed++;
@@ -168,7 +169,8 @@ void* Transactions_FuncWithTM(void *args) {
             // this executes the rand() so the next iteration does not fail again.
             Transactions_CalculateValue(values[i]); Transactions_CalculateValue(values[i]);
 
-            if(TSX_WasExplicitAbort(transactionStatus) && retriedTimes++ < 15 ){
+            if( (TSX_WasExplicitAbort(transactionStatus) || TSX_IsRetryPossible(transactionStatus)) &&
+                    retriedTimes++ < 5 ){
                 i--; // retry iteration
                 injectedErrors++;
             }
