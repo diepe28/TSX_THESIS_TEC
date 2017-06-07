@@ -6,14 +6,11 @@
 //gcc -o exe main.c -fgnu-tm
 
 long globalCount = 0;
-int const FOR_VALUE = 9999;
 int values[NUM_VALUES];
+int errorsDetected;
+pthread_mutex_t errorsMutex;
 double * results;
-double const ERROR_PROBABILITY = 5;
-/// Number of artificially injected errors
-int injectedErrors = 0;
-int transactionsFailed = 0;
-int errorsDetected = 0;
+const int ERROR_PROBABILITY = 1000000;
 
 /// The function each threads executes when testing atomicity using transactional memory
 /// \param arg the thread argument
@@ -22,7 +19,7 @@ void* Atomicity_incrementCounterWithTM(void *arg) {
     unsigned long i;
     int status;
 
-    for(i = 0; i<FOR_VALUE;i++)
+    for(i = 0; i<NUM_VALUES;i++)
     {
         status = _xbegin ();
         if (status == _XBEGIN_STARTED) {
@@ -48,7 +45,7 @@ void* Atomicity_incrementCounterWithTM(void *arg) {
 void* Atomicity_incrementCounter(void *arg) {
     unsigned long i;
 
-    for(i = 0; i<FOR_VALUE;i++)
+    for(i = 0; i<NUM_VALUES;i++)
     {
         globalCount++;
     }
@@ -68,7 +65,7 @@ int Atomicity_Test(int nTimes,int usingTM) {
     THREAD_UTILS_SetNumThreads(15);
     THREAD_UTILS_CreateThreads();
 
-    finalResult = THREAD_UTILS_GetNumThreads() * FOR_VALUE;
+    finalResult = THREAD_UTILS_GetNumThreads() * NUM_VALUES;
 
     for (i = 0 ;i < nTimes; i++) {
         globalCount = 0;
@@ -92,8 +89,6 @@ int Atomicity_Test(int nTimes,int usingTM) {
 /// \return
 void Transactions_InitValues(){
     results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
-    injectedErrors = 0;
-    transactionsFailed = 0;
     errorsDetected = 0;
 
     int i = 0;
@@ -123,13 +118,17 @@ double fRand(double fMin, double fMax)
 /// given n value, this is where with a probability we might choose to return something else indicating an error.
 /// \return Most of times (using the given probability) the correct value for n value.
 double Transactions_CalculateValue(int n) {
-    int r = rand() % 100;
-    //r = r < ERROR_PROBABILITY? rand() % 100 : r;
-    //int r = 5;
-    double result = 1;
+    int r = rand() % ERROR_PROBABILITY, i;
+    double result = n;
 
-    if (r < ERROR_PROBABILITY) {
+    for(i = 2; i < 1000; i++){
+        result *= i;
+    }
+
+    if (r < 1) { // probability of 1/ERROR_PROBABILITY
         result = 2;
+    }else {
+        result = 1;
     }
 
     return result;
@@ -139,13 +138,16 @@ double Transactions_CalculateValue(int n) {
 /// The function each tread executes when testing detection and correction of soft errors using transactional memory
 /// \param args arguments for the function
 /// \return NULL
-void* Transactions_FuncWithTM(void *args) {
-    int i, startIndex = 0, endIndex = 0, transactionStatus, v1 = 0, v2 = 0,
-            threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self()), retriedTimes = 0;
+void* Thread_FuncWithTM(void *args) {
+    int i, startIndex, endIndex, transactionStatus,v1, v2, retriedTimes = 0,
+            threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self()) ;
     double result = 0;
+    char * message = NULL;
 
     startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES);
     for (i = startIndex; i < endIndex; i++) {
+        //printf("THREAD[%d]: Iteration %d, value %d\n", threadIndex, i - startIndex, (int) result);
+
         transactionStatus = _xbegin();
         if (transactionStatus  == _XBEGIN_STARTED) {
             v1 = (int) Transactions_CalculateValue(values[i]);
@@ -158,33 +160,42 @@ void* Transactions_FuncWithTM(void *args) {
             result += v1;
             retriedTimes = 0;
             _xend();
-        } else {
-            //... non-transactional fallback path...
-            transactionsFailed++;
+        } else { //... non-transactional fallback path...
 
-//            char * message = TSX_GetTransactionAbortMessage(transactionStatus);
-//            printf("Transaction creation failed: %s , errors detected %d , %d, %d\n", message, errorsDetected, v1, v2);
-//            free(message);
+            //message = TSX_GetTransactionAbortMessage(transactionStatus);
+            //printf("Transaction creation failed: %s\n", message);
+            //free(message);
 
             // this executes the rand() so the next iteration does not fail again.
             Transactions_CalculateValue(values[i]); Transactions_CalculateValue(values[i]);
 
-            if( (TSX_WasExplicitAbort(transactionStatus) || TSX_IsRetryPossible(transactionStatus)) &&
-                    retriedTimes++ < 5 ){
-                i--; // retry iteration
-                injectedErrors++;
-            }
-            else{
-                result += Transactions_CalculateValue(values[i]);
+            if(retriedTimes++ < 5 ){
+                if(TSX_WasExplicitAbort(transactionStatus)) {
+                    i--; // retry iteration
+                    pthread_mutex_lock(&errorsMutex);
+                    errorsDetected++;
+                    pthread_mutex_unlock(&errorsMutex);
+                    continue;
+                }
+                if(TSX_IsRetryPossible(transactionStatus)){
+                    i--; // retry iteration
+                    continue;
+                }
             }
 
+            // Non transactional execution
+            v1 = Transactions_CalculateValue(values[i]);
+            result += v1;
+            if(v1 == 2) {
+                printf("Executing without transactions an error occurred, retriedTimes %d \n", retriedTimes);
+            }
         }
 
     }
     results[threadIndex] = result;
 }
 
-void* Transactions_Func(void *args) {
+void* Thread_Func(void *args) {
     int i, startIndex = 0, endIndex = 0;
     double result = 0, v1;
     int threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
@@ -201,7 +212,7 @@ void* Transactions_Func(void *args) {
 
 /// Tests the transactional memory extensions of Intel for correction of soft errors.
 /// \param numThreads the number of threads to be created.
-void Transactions_Test(int numThreads, int usingTM){
+int Transactions_Test(int numThreads, int usingTM){
     int i;
     double finalResult = 0;
 
@@ -209,7 +220,7 @@ void Transactions_Test(int numThreads, int usingTM){
     Transactions_InitValues();
 
     THREAD_UTILS_CreateThreads();
-    THREAD_UTILS_StartThreads(usingTM? &Transactions_FuncWithTM : &Transactions_Func, NULL);
+    THREAD_UTILS_StartThreads(usingTM? &Thread_FuncWithTM : &Thread_Func, NULL);
 
     for(i =0; i < numThreads; i++){
         finalResult += results[i];
@@ -218,6 +229,6 @@ void Transactions_Test(int numThreads, int usingTM){
     THREAD_UTILS_DestroyThreads();
     Transactions_DestroyValues();
 
-    printf("Injected errors: %d, detected: %d, failed transactions: %d \n", injectedErrors, errorsDetected, transactionsFailed);
-    printf("The final result is: %f\n", finalResult);
+    printf("The final result is: %f, errorsDetected: %d\n", finalResult, errorsDetected);
+    return finalResult == NUM_VALUES;
 }

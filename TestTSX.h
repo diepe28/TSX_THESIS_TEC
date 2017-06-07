@@ -4,14 +4,14 @@
 #include "UtilFunctionsTSX.h"
 #include "ThreadUtils.h"
 
-#define NUM_VALUES 999
+#define NUM_VALUES 500000
 
 extern long globalCount;
-extern int const FOR_VALUE;
 extern int values[NUM_VALUES];
+extern int errorsDetected;
+extern pthread_mutex_t errorsMutex;
 extern double * results;
-extern double const ERROR_PROBABILITY;
-extern int injectedErrors;
+extern int const ERROR_PROBABILITY;
 
 void* Atomicity_incrementCounterWithTM(void *arg);
 
@@ -29,6 +29,6 @@ void* Transactions_FuncWithTM(void *args);
 
 void* Transactions_Func(void *args);
 
-void Transactions_Test(int numThreads, int usingTM);
+int Transactions_Test(int numThreads, int usingTM);
 
 #endif //TEST_TSX_H
