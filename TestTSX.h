@@ -4,12 +4,12 @@
 #include "UtilFunctionsTSX.h"
 #include "ThreadUtils.h"
 
-#define NUM_VALUES 500000
+#define NUM_VALUES 1000000
 
 extern long globalCount;
 extern int values[NUM_VALUES];
-extern int errorsDetected;
-extern pthread_mutex_t errorsMutex;
+extern int errors[NUM_VALUES];
+extern int errorsInjected;
 extern double * results;
 extern int const ERROR_PROBABILITY;
 

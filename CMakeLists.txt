@@ -29,3 +29,4 @@ set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctions
 add_executable(tsxExe ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(tsxExe pthread)
+TARGET_LINK_LIBRARIES(tsxExe m)

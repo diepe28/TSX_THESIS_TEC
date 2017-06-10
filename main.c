@@ -7,16 +7,31 @@
 /// It calls Atomicity_Test to test access to a critical section using Transactional Memory and
 /// Transactions_Test to test how to recover from errors using Transactional Memory.
 /// \return 0
-int main(){
+int main(int argc, char **argv){
     srand(time(NULL));
 
-    int numExecutions = 10;
-    int numThreads = 4;
-    int usingTM = 1;
+    int numExecutions =  atoi(argv[1]);
+    int numThreads = 0;
+    int usingTM = 0; // default 0
+    int i = 0;
 
-    //BENCHMARK_SUPPORT_EvaluateTransactions(numExecutions, numThreads, usingTM);
+    printf("Num Executions %d\n", numExecutions);
+executionPhase:
+    numThreads = 1; // default 1
+    i = 0;
+    do{
+        printf("\n//////////////////////// %d Thread - TXS? %d ////////////////\n", numThreads, usingTM);
+        BENCHMARK_SUPPORT_EvaluateTransactions(numExecutions, numThreads, usingTM);
+        i += 2;
+        numThreads = i;
+    }while(i < 5);
 
-    printf("Successful? %d \n", Transactions_Test(numThreads, usingTM));
+    if(!usingTM) {
+        usingTM = 1;
+        goto executionPhase;
+    }
+
+    //Transactions_Test(numThreads, usingTM);
 
     return 0;
 }

@@ -7,10 +7,10 @@
 
 long globalCount = 0;
 int values[NUM_VALUES];
-int errorsDetected;
-pthread_mutex_t errorsMutex;
+int errors[NUM_VALUES];
+int errorsInjected;
 double * results;
-const int ERROR_PROBABILITY = 1000000;
+const int ERROR_PROBABILITY = 6000000;
 
 /// The function each threads executes when testing atomicity using transactional memory
 /// \param arg the thread argument
@@ -89,24 +89,27 @@ int Atomicity_Test(int nTimes,int usingTM) {
 /// \return
 void Transactions_InitValues(){
     results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
-    errorsDetected = 0;
+    errorsInjected = 0;
 
     int i = 0;
     for (; i < NUM_VALUES; i++) {
         values[i] = i;
+        errors[i] = (rand() % ERROR_PROBABILITY) == 1;
+        if(errors[i]) {
+            errorsInjected++;
+        }
     }
     for(i = 0; i < THREAD_UTILS_GetNumThreads(); i++)
         results[i] = 0;
 }
 
-/// Destroyes all values that were allocated in Transaction_InitValues
+/// Destroys all values that were allocated in Transaction_InitValues
 /// \return
 void Transactions_DestroyValues(){
     free(results);
 }
 
-double fRand(double fMin, double fMax)
-{
+double fRand(double fMin, double fMax) {
     double f = (double)rand() / RAND_MAX;
     return fMin + f * (fMax - fMin);
 }
@@ -118,17 +121,12 @@ double fRand(double fMin, double fMax)
 /// given n value, this is where with a probability we might choose to return something else indicating an error.
 /// \return Most of times (using the given probability) the correct value for n value.
 double Transactions_CalculateValue(int n) {
-    int r = rand() % ERROR_PROBABILITY, i;
-    double result = n;
 
-    for(i = 2; i < 1000; i++){
-        result *= i;
-    }
+    int i;
+    double result = errors[n] == 1? 2 : 1;
 
-    if (r < 1) { // probability of 1/ERROR_PROBABILITY
-        result = 2;
-    }else {
-        result = 1;
+    for(i = 2; i < 100; i++){
+        sqrt(i * n * i * n);
     }
 
     return result;
@@ -139,8 +137,8 @@ double Transactions_CalculateValue(int n) {
 /// \param args arguments for the function
 /// \return NULL
 void* Thread_FuncWithTM(void *args) {
-    int i, startIndex, endIndex, transactionStatus,v1, v2, retriedTimes = 0,
-            threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self()) ;
+    int i, startIndex, endIndex, transactionStatus, v1, v2, retriedTimes = 0,
+            threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
     double result = 0;
     char * message = NULL;
 
@@ -150,8 +148,8 @@ void* Thread_FuncWithTM(void *args) {
 
         transactionStatus = _xbegin();
         if (transactionStatus  == _XBEGIN_STARTED) {
-            v1 = (int) Transactions_CalculateValue(values[i]);
-            v2 = (int) Transactions_CalculateValue(values[i]);
+            v1 = (int) Transactions_CalculateValue(i);
+            v2 = (int) Transactions_CalculateValue(i);
 
             //if (v1 != v2) {
             if (v1 == 2 || v2 == 2) {
@@ -161,34 +159,37 @@ void* Thread_FuncWithTM(void *args) {
             retriedTimes = 0;
             _xend();
         } else { //... non-transactional fallback path...
+            // executes the rand() twice so the next iteration does not fail again, rand(); rand();
 
-            //message = TSX_GetTransactionAbortMessage(transactionStatus);
-            //printf("Transaction creation failed: %s\n", message);
-            //free(message);
-
-            // this executes the rand() so the next iteration does not fail again.
-            Transactions_CalculateValue(values[i]); Transactions_CalculateValue(values[i]);
-
-            if(retriedTimes++ < 5 ){
-                if(TSX_WasExplicitAbort(transactionStatus)) {
-                    i--; // retry iteration
-                    pthread_mutex_lock(&errorsMutex);
-                    errorsDetected++;
-                    pthread_mutex_unlock(&errorsMutex);
-                    continue;
-                }
-                if(TSX_IsRetryPossible(transactionStatus)){
+            if(TSX_WasExplicitAbort(transactionStatus)) {
+                if(retriedTimes++ < 5) {
+                    errors[i] = (rand() % ERROR_PROBABILITY) == 1;
                     i--; // retry iteration
                     continue;
                 }
+            }
+
+            if(TSX_IsRetryPossible(transactionStatus)){
+                errors[i] = (rand() % ERROR_PROBABILITY) == 1;
+                i--; // retry iteration
+                continue;
             }
 
             // Non transactional execution
-            v1 = Transactions_CalculateValue(values[i]);
+            errors[i] = (rand() % ERROR_PROBABILITY) == 1;
+            v1 = (int) Transactions_CalculateValue(i);
             result += v1;
+
             if(v1 == 2) {
-                printf("Executing without transactions an error occurred, retriedTimes %d \n", retriedTimes);
+                message = TSX_GetTransactionAbortMessage(transactionStatus);
+                printf("%s RetriedTimes %d, "
+                           "Was explicit abort? %d "
+                           "Is retry possible? %d\n",
+                       message, retriedTimes, TSX_WasExplicitAbort(transactionStatus), TSX_IsRetryPossible(transactionStatus));
+                free(message);
             }
+
+            retriedTimes = 0;
         }
 
     }
@@ -197,13 +198,12 @@ void* Thread_FuncWithTM(void *args) {
 
 void* Thread_Func(void *args) {
     int i, startIndex = 0, endIndex = 0;
-    double result = 0, v1;
+    double result = 0;
     int threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
 
     startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES);
     for (i = startIndex; i < endIndex; i++) {
-        v1 = Transactions_CalculateValue(values[i]);
-        result += v1;
+        result += Transactions_CalculateValue(values[i]);
     }
 
     results[threadIndex] = result;
@@ -229,6 +229,7 @@ int Transactions_Test(int numThreads, int usingTM){
     THREAD_UTILS_DestroyThreads();
     Transactions_DestroyValues();
 
-    printf("The final result is: %f, errorsDetected: %d\n", finalResult, errorsDetected);
+    //printf("The final result is: %f, errors detected: %d is it successful? %d\n",
+    //       finalResult, errorsDetected, finalResult == NUM_VALUES);
     return finalResult == NUM_VALUES;
 }

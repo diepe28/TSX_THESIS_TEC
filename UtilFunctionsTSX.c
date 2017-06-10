@@ -13,15 +13,15 @@ char * TSX_GetTransactionAbortMessage(int transactionStatus) {
 
     if(TSX_WasExplicitAbort(transactionStatus))
         strcpy(message, "Transaction explicitly aborted with _xabort");
-    if(transactionStatus &  _XABORT_RETRY)
+    else if(transactionStatus &  _XABORT_RETRY)
         strcpy(message, "Transaction retry is possible.");
-    if(transactionStatus & _XABORT_CONFLICT)
+    else if(transactionStatus & _XABORT_CONFLICT)
         strcpy(message, "Transaction abort due to a memory conflict with another thread");
-    if(transactionStatus &  _XABORT_CAPACITY)
+    else if(transactionStatus &  _XABORT_CAPACITY)
         strcpy(message, "Transaction abort due to the transaction using too much memory");
-    if(transactionStatus &  _XABORT_DEBUG)
+    else if(transactionStatus &  _XABORT_DEBUG)
         strcpy(message, "Transaction abort due to a debug trap");
-    if(transactionStatus &  _XABORT_NESTED)
+    else if(transactionStatus &  _XABORT_NESTED)
         strcpy(message, "Transaction abort in a inner nested transaction");
 
     return message;
@@ -39,7 +39,7 @@ int TSX_WasExplicitAbort(int transactionStatus){
 /// \param transactionStatus the status returned by _xbegin() or _xabort()
 /// \return true if retry is possible, 0 otherwise
 int TSX_IsRetryPossible(int transactionStatus){
-    return transactionStatus & _XABORT_RETRY;
+    return (transactionStatus & _XABORT_RETRY) != 0;
 }
 
 unsigned int TSX_Get_Explicit_Abort_Code(){
