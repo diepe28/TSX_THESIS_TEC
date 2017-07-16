@@ -6,7 +6,7 @@
 
 void BENCHMARK_SUPPORT_EvaluateTransactions(int numExecutions){
     int numThreads = 0;
-    int usingTM = 1; // default 0
+    int usingTM = 0; // default 0
     int i = 0;
 
     printf("Num Executions %d\n", numExecutions);

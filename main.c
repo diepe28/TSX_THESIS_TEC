@@ -9,29 +9,10 @@
 /// \return 0
 int main(int argc, char **argv){
     srand(time(NULL));
-
     int numExecutions =  atoi(argv[1]);
-    int numThreads = 0;
-    int usingTM = 0; // default 0
-    int i = 0;
+    //BENCHMARK_SUPPORT_EvaluateTransactions(numExecutions);
 
-    printf("Num Executions %d\n", numExecutions);
-executionPhase:
-    numThreads = 1; // default 1
-    i = 0;
-    do{
-        printf("\n//////////////////////// %d Thread - TXS? %d ////////////////\n", numThreads, usingTM);
-        BENCHMARK_SUPPORT_EvaluateTransactions(numExecutions, numThreads, usingTM);
-        i += 2;
-        numThreads = i;
-    }while(i < 5);
-
-    if(!usingTM) {
-        usingTM = 1;
-        goto executionPhase;
-    }
-
-    //Transactions_Test(numThreads, usingTM);
+    Replication_Tests();
 
     return 0;
 }
