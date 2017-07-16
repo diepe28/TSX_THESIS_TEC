@@ -9,6 +9,8 @@
 #include <gtk/gtk.h>
 #include "TestTSX.h"
 
-void BENCHMARK_SUPPORT_EvaluateTransactions(int numExecutions, int numThread, int usingTM);
+void BENCHMARK_SUPPORT_EvaluateTransactions(int numExecutions);
+
+void BENCHMARK_SUPPORT_EvaluateTransactionsAux(int numExecutions, int numThread, int usingTM);
 
 #endif //TSXEXAMPLE_BENCHMARKSUPPORT_H

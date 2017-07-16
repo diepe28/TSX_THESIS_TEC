@@ -4,7 +4,29 @@
 
 #include "BenchmarkSupport.h"
 
-void BENCHMARK_SUPPORT_EvaluateTransactions(int numExecutions, int numThreads, int usingTM){
+void BENCHMARK_SUPPORT_EvaluateTransactions(int numExecutions){
+    int numThreads = 0;
+    int usingTM = 1; // default 0
+    int i = 0;
+
+    printf("Num Executions %d\n", numExecutions);
+    executionPhase:
+    numThreads = 1; // default 1
+    i = 0;
+    do{
+        printf("\n//////////////////////// %d Thread - TXS? %d ////////////////\n", numThreads, usingTM);
+        BENCHMARK_SUPPORT_EvaluateTransactionsAux(numExecutions, numThreads, usingTM);
+        i += 2;
+        numThreads = i;
+    }while(i < 5);
+
+    if(!usingTM) {
+        usingTM = 1;
+        goto executionPhase;
+    }
+}
+
+void BENCHMARK_SUPPORT_EvaluateTransactionsAux(int numExecutions, int numThreads, int usingTM){
     int i = 0, successful = 0, successCount = 0;
     gdouble * times = g_malloc(sizeof(gdouble) * numExecutions);
     gdouble mean = 0, sd = 0;
@@ -23,7 +45,7 @@ void BENCHMARK_SUPPORT_EvaluateTransactions(int numExecutions, int numThreads, i
         g_timer_destroy(timer);
 
         printf("Milliseconds elapsed: %f "
-                       "Errors detected: %d   "
+                       "Errors injected: %d   "
                        "Was it Successful? %d \n", milliseconds_elapsed, errorsInjected, successful);
     }
     mean /= numExecutions;
