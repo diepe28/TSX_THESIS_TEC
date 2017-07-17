@@ -98,6 +98,7 @@ IterationStatus iterationStatus = started; //default: started
 pthread_mutex_t syncMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t t2_calculated = PTHREAD_COND_INITIALIZER,
                verification_done = PTHREAD_COND_INITIALIZER;
+int firstTime = 1;
 
 double ThreadReplicationCalcFun(int index){
     int i;
@@ -118,18 +119,26 @@ void ThreadReplicationFunc(void * args){
     char * message = NULL;
 
     for (i = 0; i < NUM_VALUES; i++) {
-        printf("Executing iteration %d, on thread %d\n", i, threadIndex);
+        printf("Thread[%d], iteration %d, \n", threadIndex, i);
 
         if(threadIndex == 1){
             v2 = ThreadReplicationCalcFun(i);
 
+            if(i == 8 && firstTime){
+                firstTime = 0;
+                v2 = 2;
+            }
+
             pthread_mutex_lock(&syncMutex);
+            //printf("Thread[%d], iteration %d, able to get mutex \n", threadIndex, i);
             iterationStatus = replicationFinished;
             //Spurious wakeups from the pthread_cond_wait() may occur.
             while(iterationStatus < 2) {
                 pthread_cond_signal(&t2_calculated);
+                //printf("Thread[%d], iteration %d, will wait until verification is done \n", threadIndex, i);
                 pthread_cond_wait(&verification_done, &syncMutex);
             }
+            //printf("Thread[%d], iteration %d, wakes up and unlocks mutex \n", threadIndex, i);
             pthread_mutex_unlock(&syncMutex);
         }
 
@@ -138,17 +147,21 @@ void ThreadReplicationFunc(void * args){
             v1 = ThreadReplicationCalcFun(i);
 
             pthread_mutex_lock(&syncMutex);
+            //printf("Thread[%d], iteration %d, able to get mutex \n", threadIndex, i);
             while(iterationStatus != replicationFinished) {
+                //printf("Thread[%d], iteration %d, wait until t2 is calculated \n", threadIndex, i);
                 pthread_cond_wait(&t2_calculated, &syncMutex);
             }
 
             // what to do? report something, but continue anyway?
             if(v1 != v2){
+                printf("\nMain thread detected an error... trying again\n");
                 iterationStatus = failed;
             }else{
                 iterationStatus = successfull;
             }
 
+            //printf("Thread[%d], iteration %d, wakes up, validates and unlocks mutex \n", threadIndex, i);
             pthread_cond_signal(&verification_done);
             pthread_mutex_unlock(&syncMutex);
 
@@ -209,7 +222,6 @@ void ThreadReplicationFunc(void * args){
         // both threads execute this part
         if(iterationStatus == failed){
             i--; //try again
-            iterationStatus = started;
         }else{
             result += v1;
         }
