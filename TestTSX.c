@@ -99,6 +99,7 @@ pthread_mutex_t syncMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t t2_calculated = PTHREAD_COND_INITIALIZER,
                verification_done = PTHREAD_COND_INITIALIZER;
 int firstTime = 1;
+pthread_barrier_t barrier1, barrier2;
 
 double ThreadReplicationCalcFun(int index){
     int i;
@@ -111,12 +112,12 @@ double ThreadReplicationCalcFun(int index){
     return 1;
 }
 
-
-void ThreadReplicationFunc(void * args){
+void ThreadReplicationFunc_SignalSync(void * args){
     int i, j, retriedTimes = 0,
             threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
     double result = 0;
     char * message = NULL;
+
 
     for (i = 0; i < NUM_VALUES; i++) {
         printf("Thread[%d], iteration %d, \n", threadIndex, i);
@@ -130,15 +131,12 @@ void ThreadReplicationFunc(void * args){
             }
 
             pthread_mutex_lock(&syncMutex);
-            //printf("Thread[%d], iteration %d, able to get mutex \n", threadIndex, i);
             iterationStatus = replicationFinished;
             //Spurious wakeups from the pthread_cond_wait() may occur.
             while(iterationStatus < 2) {
                 pthread_cond_signal(&t2_calculated);
-                //printf("Thread[%d], iteration %d, will wait until verification is done \n", threadIndex, i);
                 pthread_cond_wait(&verification_done, &syncMutex);
             }
-            //printf("Thread[%d], iteration %d, wakes up and unlocks mutex \n", threadIndex, i);
             pthread_mutex_unlock(&syncMutex);
         }
 
@@ -147,9 +145,7 @@ void ThreadReplicationFunc(void * args){
             v1 = ThreadReplicationCalcFun(i);
 
             pthread_mutex_lock(&syncMutex);
-            //printf("Thread[%d], iteration %d, able to get mutex \n", threadIndex, i);
             while(iterationStatus != replicationFinished) {
-                //printf("Thread[%d], iteration %d, wait until t2 is calculated \n", threadIndex, i);
                 pthread_cond_wait(&t2_calculated, &syncMutex);
             }
 
@@ -161,62 +157,8 @@ void ThreadReplicationFunc(void * args){
                 iterationStatus = successfull;
             }
 
-            //printf("Thread[%d], iteration %d, wakes up, validates and unlocks mutex \n", threadIndex, i);
             pthread_cond_signal(&verification_done);
             pthread_mutex_unlock(&syncMutex);
-
-            // with transactions --- to do
-            /*iterationStatus = undecided;
-            iterationStatus = _xbegin();
-            if (iterationStatus == _XBEGIN_STARTED) {
-                v1 = ThreadReplicationCalcFun(i);
-
-                // waiting for thread 2 to finish
-                for(j = auxVal = 0; j < 100; j++){
-                    auxVal += sqrt(9823);
-                }
-
-                //if (v2 != -1)
-                //if (v1 != v2) {
-                //    _xabort(0xff);
-                //}
-                result += v1;
-                retriedTimes = 0;
-                iterationStatus = successfull;
-                v2 = -1;
-                _xend();
-            } else { //... non-transactional fallback path...
-                message = TSX_GetTransactionAbortMessage(iterationStatus);
-                printf("%s RetriedTimes %d, "
-                               "Was explicit abort? %d "
-                               "Is retry possible? %d\n",
-                       message, retriedTimes, TSX_WasExplicitAbort(iterationStatus),
-                       TSX_IsRetryPossible(iterationStatus));
-                free(message);
-
-                if (TSX_WasExplicitAbort(iterationStatus)) {
-                    if (retriedTimes++ < 5) {
-                        //errors[i] = (rand() % ERROR_PROBABILITY) == 1;
-                        iterationStatus = failed;
-                        i--; // retry iteration
-                        continue;
-                    }
-                }
-
-                if (TSX_IsRetryPossible(iterationStatus)) {
-                    //errors[i] = (rand() % ERROR_PROBABILITY) == 1;
-                    iterationStatus = failed;
-                    i--; // retry iteration
-                    continue;
-                }
-
-                // Non transactional execution, here an error may go undetected
-                //errors[i] = (rand() % ERROR_PROBABILITY) == 1;
-                v1 = ThreadReplicationCalcFun(i);
-                result += v1;
-                retriedTimes = 0;
-                iterationStatus = successfull;
-            }*/
         }
 
         // both threads execute this part
@@ -231,6 +173,56 @@ void ThreadReplicationFunc(void * args){
 
 }
 
+void ThreadReplicationFunc_BarrierSync(void * args){
+    int i, j, retriedTimes = 0,
+            threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
+    double result = 0;
+    char * message = NULL;
+
+    //should not be done here but before
+    if(threadIndex == 0) {
+        pthread_barrier_init(&barrier1, NULL, 2);
+        pthread_barrier_init(&barrier2, NULL, 2);
+    }
+
+    for (i = 0; i < NUM_VALUES; i++) {
+        printf("Thread[%d], iteration %d, \n", threadIndex, i);
+
+        if(threadIndex == 1){
+            v2 = ThreadReplicationCalcFun(i);
+            if(i == 6 && firstTime){
+                firstTime = 0;
+                v2 = 2;
+            }
+
+            pthread_barrier_wait(&barrier1);
+            pthread_barrier_wait(&barrier2);
+        }
+
+        if(threadIndex == 0) {
+            //without transaction just to synchronize
+            v1 = ThreadReplicationCalcFun(i);
+            pthread_barrier_wait(&barrier1);
+            // what to do? report something, but continue anyway?
+            if(v1 != v2){
+                iterationStatus = failed;
+            }else{
+                iterationStatus = successfull;
+            }
+
+        }
+
+        // both threads execute this part
+        if(iterationStatus == failed){
+            i--; //try again
+        }else{
+            result += v1;
+        }
+    }
+
+    printf("\n\n/////////%s EXECUTION///////\n\n", result == NUM_VALUES? "SUCCESSFUL" : "FAILED");
+
+}
 
 void Replication_Tests(){
     int i, numThreads = 2;
@@ -239,7 +231,7 @@ void Replication_Tests(){
     //Transactions_InitValues();
 
     THREAD_UTILS_CreateThreads();
-    THREAD_UTILS_StartThreads(&ThreadReplicationFunc, NULL);
+    THREAD_UTILS_StartThreads(&ThreadReplicationFunc_SignalSync, NULL);
 
     THREAD_UTILS_DestroyThreads();
     Transactions_DestroyValues();
@@ -399,3 +391,138 @@ int Transactions_Test(int numThreads, int usingTM){
     //       finalResult, errorsDetected, finalResult == NUM_VALUES);
     return finalResult == NUM_VALUES;
 }
+
+////////////////////////// TEST atomic operation with TSX
+long numAborts = 0;
+int sharedVariable = 0;
+pthread_mutex_t abortMutex = PTHREAD_MUTEX_INITIALIZER;
+
+void AtomicOps_IncAbort(){
+    pthread_mutex_lock(&abortMutex);
+    numAborts++;
+    pthread_mutex_unlock(&abortMutex);
+}
+
+double AtomicOps_CalcFunc(int threadIndex){
+    int i = 1;
+    double result = 0;
+
+//    if(threadIndex == 0){
+//        result = sharedVariable;
+//    }else{
+//        sharedVariable = 2;
+//    }
+
+    result += sqrt(789);
+    return result;
+}
+
+double AtomicOps_AtomicCalcFunc(int threadIndex){
+    int i = 1;
+    double result = 0;
+
+    if(threadIndex == 0){
+        result = sharedVariable;
+    }else{
+      __atomic_fetch_add(&sharedVariable, 2, __ATOMIC_SEQ_CST);
+    }
+
+    result += sqrt(789);
+    return result;
+}
+
+void AtomicOps_ThreadFunc1(void *args){
+    int i, transactionStatus, threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
+    char * message = NULL;
+
+    for (i = 0; i < NUM_VALUES; i++) {
+        transactionStatus = _xbegin();
+        if (transactionStatus  == _XBEGIN_STARTED) {
+            globalCount++;
+            _xend();
+        } else { //... non-transactional fallback path...
+            AtomicOps_IncAbort();
+            message = TSX_GetTransactionAbortMessage(transactionStatus);
+            printf("%s ... Was explicit abort? %d "
+                           "Is retry possible? %d\n",
+                       message, TSX_WasExplicitAbort(transactionStatus), TSX_IsRetryPossible(transactionStatus));
+                free(message);
+        }
+    }
+}
+
+void AtomicOps_ThreadFunc2(void *args){
+    int i, transactionStatus, c1 = 0, c2 = 0 , threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
+    char * message = NULL;
+
+    for (i = 0; i < NUM_VALUES; i++) {
+        transactionStatus = _xbegin();
+        if (transactionStatus  == _XBEGIN_STARTED) {
+            threadIndex == 0? c1++ : c2++;
+            _xend();
+        } else { //... non-transactional fallback path...
+            AtomicOps_IncAbort();
+            message = TSX_GetTransactionAbortMessage(transactionStatus);
+            printf("%s ... Was explicit abort? %d "
+                           "Is retry possible? %d\n",
+                   message, TSX_WasExplicitAbort(transactionStatus), TSX_IsRetryPossible(transactionStatus));
+            free(message);
+        }
+    }
+
+    printf("Thread[%d], cont: %d: \n", threadIndex, threadIndex == 0? c1 : c2);
+}
+
+void AtomicOps_ThreadFunc3(void *args){
+    int i, transactionStatus, threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
+    char * message = NULL;
+    double result = 0;
+
+    for (i = 0; i < NUM_VALUES; i++) {
+        transactionStatus = _xbegin();
+        if (transactionStatus  == _XBEGIN_STARTED) {
+            //result += AtomicOps_CalcFunc(threadIndex);
+            result += AtomicOps_AtomicCalcFunc(threadIndex);
+            _xend();
+        } else { //... non-transactional fallback path...
+            AtomicOps_IncAbort();
+            message = TSX_GetTransactionAbortMessage(transactionStatus);
+            printf("%s ... Was explicit abort? %d "
+                           "Is retry possible? %d\n",
+                   message, TSX_WasExplicitAbort(transactionStatus), TSX_IsRetryPossible(transactionStatus));
+            free(message);
+        }
+    }
+
+    printf("Thread[%d], result: %f: \n", threadIndex, result);
+}
+
+void AtomicOps_Test(){
+    int test = 3, numThreads = 2;
+    void * threadFunc =
+            test == 1 ? &AtomicOps_ThreadFunc1 :
+            test == 2 ? &AtomicOps_ThreadFunc2 : &AtomicOps_ThreadFunc3;
+    THREAD_UTILS_SetNumThreads(numThreads);
+
+    THREAD_UTILS_CreateThreads();
+    THREAD_UTILS_StartThreads(threadFunc, NULL);
+
+    if(test == 1) {
+        printf("Final Result: %ld , Expected Result %d, num of aborts: %ld\n",
+               globalCount, NUM_VALUES * THREAD_UTILS_NUM_THREADS, numAborts);
+    }
+    if(test == 2 || test == 3){
+        printf("Num of aborts: %ld\n", numAborts);
+    }
+
+    THREAD_UTILS_DestroyThreads();
+}
+
+
+
+
+
+
+
+
+

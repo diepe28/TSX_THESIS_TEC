@@ -2,9 +2,9 @@
 #define THREAD_UTILS_H
 
 #include <sys/types.h>
-#include<pthread.h>
+#include <pthread.h>
 #include <stdlib.h>
-#include<stdio.h>
+#include <stdio.h>
 #include <unistd.h>
 #include <math.h>
 

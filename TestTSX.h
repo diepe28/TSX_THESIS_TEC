@@ -4,7 +4,7 @@
 #include "UtilFunctionsTSX.h"
 #include "ThreadUtils.h"
 
-#define NUM_VALUES 10
+#define NUM_VALUES 10000
 
 extern long globalCount;
 extern int values[NUM_VALUES];
@@ -33,4 +33,5 @@ int Transactions_Test(int numThreads, int usingTM);
 
 void Replication_Tests();
 
+void AtomicOps_Test();
 #endif //TEST_TSX_H
