@@ -87,13 +87,17 @@ int Atomicity_Test(int nTimes,int usingTM) {
 //// Replication user hyper-threading tests
 
 typedef enum {
-    undecided = 0,
-    successfull = 1,
-    failed = 2
+    started = 0,
+    replicationFinished = 1,
+    successfull = 2,
+    failed = 3
 }IterationStatus;
 
-double v1, v2;
-IterationStatus iterationStatus = failed;
+double v1 = -1, v2 = -1;
+IterationStatus iterationStatus = started; //default: started
+pthread_mutex_t syncMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t t2_calculated = PTHREAD_COND_INITIALIZER,
+               verification_done = PTHREAD_COND_INITIALIZER;
 
 double ThreadReplicationCalcFun(int index){
     int i;
@@ -108,29 +112,50 @@ double ThreadReplicationCalcFun(int index){
 
 
 void ThreadReplicationFunc(void * args){
-    int i, j, transactionStatus, retriedTimes = 0,
+    int i, j, retriedTimes = 0,
             threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
-    double result = 0, auxVal;
+    double result = 0;
     char * message = NULL;
 
     for (i = 0; i < NUM_VALUES; i++) {
-
         printf("Executing iteration %d, on thread %d\n", i, threadIndex);
 
         if(threadIndex == 1){
             v2 = ThreadReplicationCalcFun(i);
-            while(iterationStatus == undecided); // wait for t1 to compute
-            if (iterationStatus == failed){
-                while (iterationStatus != undecided); // wait for t1 to restart
-                i--;
+
+            pthread_mutex_lock(&syncMutex);
+            iterationStatus = replicationFinished;
+            //Spurious wakeups from the pthread_cond_wait() may occur.
+            while(iterationStatus < 2) {
+                pthread_cond_signal(&t2_calculated);
+                pthread_cond_wait(&verification_done, &syncMutex);
             }
+            pthread_mutex_unlock(&syncMutex);
         }
 
         if(threadIndex == 0) {
-            iterationStatus = undecided;
-            v1 = v2 = -1;
-            transactionStatus = _xbegin();
-            if (transactionStatus == _XBEGIN_STARTED) {
+            //without transaction just to synchronize
+            v1 = ThreadReplicationCalcFun(i);
+
+            pthread_mutex_lock(&syncMutex);
+            while(iterationStatus != replicationFinished) {
+                pthread_cond_wait(&t2_calculated, &syncMutex);
+            }
+
+            // what to do? report something, but continue anyway?
+            if(v1 != v2){
+                iterationStatus = failed;
+            }else{
+                iterationStatus = successfull;
+            }
+
+            pthread_cond_signal(&verification_done);
+            pthread_mutex_unlock(&syncMutex);
+
+            // with transactions --- to do
+            /*iterationStatus = undecided;
+            iterationStatus = _xbegin();
+            if (iterationStatus == _XBEGIN_STARTED) {
                 v1 = ThreadReplicationCalcFun(i);
 
                 // waiting for thread 2 to finish
@@ -145,17 +170,18 @@ void ThreadReplicationFunc(void * args){
                 result += v1;
                 retriedTimes = 0;
                 iterationStatus = successfull;
+                v2 = -1;
                 _xend();
             } else { //... non-transactional fallback path...
-                message = TSX_GetTransactionAbortMessage(transactionStatus);
+                message = TSX_GetTransactionAbortMessage(iterationStatus);
                 printf("%s RetriedTimes %d, "
                                "Was explicit abort? %d "
                                "Is retry possible? %d\n",
-                       message, retriedTimes, TSX_WasExplicitAbort(transactionStatus),
-                       TSX_IsRetryPossible(transactionStatus));
+                       message, retriedTimes, TSX_WasExplicitAbort(iterationStatus),
+                       TSX_IsRetryPossible(iterationStatus));
                 free(message);
 
-                if (TSX_WasExplicitAbort(transactionStatus)) {
+                if (TSX_WasExplicitAbort(iterationStatus)) {
                     if (retriedTimes++ < 5) {
                         //errors[i] = (rand() % ERROR_PROBABILITY) == 1;
                         iterationStatus = failed;
@@ -164,7 +190,7 @@ void ThreadReplicationFunc(void * args){
                     }
                 }
 
-                if (TSX_IsRetryPossible(transactionStatus)) {
+                if (TSX_IsRetryPossible(iterationStatus)) {
                     //errors[i] = (rand() % ERROR_PROBABILITY) == 1;
                     iterationStatus = failed;
                     i--; // retry iteration
@@ -177,7 +203,15 @@ void ThreadReplicationFunc(void * args){
                 result += v1;
                 retriedTimes = 0;
                 iterationStatus = successfull;
-            }
+            }*/
+        }
+
+        // both threads execute this part
+        if(iterationStatus == failed){
+            i--; //try again
+            iterationStatus = started;
+        }else{
+            result += v1;
         }
     }
 
