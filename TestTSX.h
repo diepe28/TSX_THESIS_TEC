@@ -4,7 +4,7 @@
 #include "UtilFunctionsTSX.h"
 #include "ThreadUtils.h"
 
-#define NUM_VALUES 10000
+#define NUM_VALUES 1000
 
 extern long globalCount;
 extern int values[NUM_VALUES];

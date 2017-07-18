@@ -23,6 +23,7 @@ endif (GTK2_FOUND)
 set(CMAKE_C_STANDARD 99)
 set(GCC_TM_LINK_FLAG    '-fgnu-tm')
 add_definitions(${GCC_TM_LINK_FLAG})
+#check optimization level -O3
 
 
 set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h)

@@ -11,7 +11,6 @@ int main(int argc, char **argv){
     srand(time(NULL));
     int numExecutions =  atoi(argv[1]);
     //BENCHMARK_SUPPORT_EvaluateTransactions(numExecutions);
-
     //Replication_Tests();
     AtomicOps_Test();
 
