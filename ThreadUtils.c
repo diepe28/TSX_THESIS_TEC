@@ -13,7 +13,7 @@ void THREAD_UTILS_StartThreads(void * _start_routine, void * _thread_routine_arg
 
     // Creates THREAD_UTILS_NUM_THREADS-1 threads, starts at 1 because of the main thread
     for (j = 1; j < THREAD_UTILS_NUM_THREADS; j++)
-        err = pthread_create(THREAD_UTILS_Threads[j], NULL, _start_routine, _thread_routine_args);
+        err = pthread_create(THREAD_UTILS_Threads[j], NULL, _start_routine, (void*)(int64_t)j);
 
     // Executes the routine in main thread
     ((void (*)(void)) _start_routine)();

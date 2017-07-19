@@ -1,4 +1,5 @@
 #include "BenchmarkSupport.h"
+#include "TestCoreAffinity.h"
 
 ///
 /// Main method of the prototype
@@ -12,7 +13,8 @@ int main(int argc, char **argv){
     int numExecutions =  atoi(argv[1]);
     //BENCHMARK_SUPPORT_EvaluateTransactions(numExecutions);
     //Replication_Tests();
-    AtomicOps_Test();
+    //AtomicOps_Test();
+    CoreAffinity_View();
 
     return 0;
 }
