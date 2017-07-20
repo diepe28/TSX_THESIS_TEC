@@ -27,14 +27,15 @@ void THREAD_UTILS_StartThreads(void * _start_routine, void * _thread_routine_arg
 /// \param threadIndex the index of the current thread in THREAD_UTILS_Threads
 /// \param endIndex an out parameter that will hold the end of the range
 /// \param numValues the number of values to process work array
+/// \param numThreads the number of working threads
 /// \return start index of the range to work.
-int THREAD_UTILS_GetRangeFromThreadId(int threadIndex, int* endIndex, int numValues){
-    int valuesPerThread = numValues / THREAD_UTILS_NUM_THREADS;
+int THREAD_UTILS_GetRangeFromThreadId(int threadIndex, int* endIndex, int numValues, int numThreads){
+    int valuesPerThread = numValues / numThreads;
     int startIndex;
     startIndex = threadIndex * valuesPerThread;
     *endIndex = (startIndex + valuesPerThread);
-    if (threadIndex == THREAD_UTILS_NUM_THREADS-1)
-        *endIndex += (numValues % THREAD_UTILS_NUM_THREADS);
+    if (threadIndex == numThreads-1)
+        *endIndex += (numValues % numThreads);
     return startIndex;
 }
 

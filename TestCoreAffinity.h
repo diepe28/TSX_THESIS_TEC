@@ -5,6 +5,15 @@
 #ifndef TSXPROJECT_TESTCOREAFFINITY_H
 #define TSXPROJECT_TESTCOREAFFINITY_H
 
-void CoreAffinity_View();
+typedef enum {
+    normal,
+    normallyReplicated,
+    normallyReplicatedWithHT,
+    hyperReplicated
+} ExecutionType;
+
+void CoreAffinity_View(int numThreads, int useHyperThread);
+
+void CoreAffinity_Replication_Test(ExecutionType execType);
 
 #endif //TSXPROJECT_TESTCOREAFFINITY_H

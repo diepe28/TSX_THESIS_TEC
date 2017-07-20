@@ -300,7 +300,7 @@ void* Thread_FuncWithTM(void *args) {
     double result = 0;
     char * message = NULL;
 
-    startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES);
+    startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES, THREAD_UTILS_NUM_THREADS);
     for (i = startIndex; i < endIndex; i++) {
         //printf("THREAD[%d]: Iteration %d, value %d\n", threadIndex, i - startIndex, (int) result);
 
@@ -359,7 +359,7 @@ void* Thread_Func(void *args) {
     double result = 0;
     int threadIndex = THREAD_UTILS_GetThreadIndex(pthread_self());
 
-    startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES);
+    startIndex = THREAD_UTILS_GetRangeFromThreadId(threadIndex, &endIndex, NUM_VALUES, THREAD_UTILS_NUM_THREADS);
     for (i = startIndex; i < endIndex; i++) {
         result += Transactions_CalculateValue(values[i]);
     }
