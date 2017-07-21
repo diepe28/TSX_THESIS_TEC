@@ -127,6 +127,14 @@ void CoreAffinity_View(int numThreads, int withHyperThread){
 ////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////
 
+void barrierInit(){
+    int i = 0;
+    for(i; i < 2; i++){
+        pthread_barrier_init(&barriersCore0[i], NULL, 2);
+        pthread_barrier_init(&barriersCore1[i], NULL, 2);
+    }
+}
+
 void barrierWait(int index){
     // core 1
     if(__thread_id % 2){
@@ -226,25 +234,29 @@ void thread_task_hyper_replicated(void* arg) {
         if(isHyperThread){
             globalTempResults[__thread_id-2] = Affinity_CalcFunc(i);
             //finished and waiting for main thread
-            hyperThreadsFinished[__thread_id-2] = 1;
-            barrierWait();
+            hyperThreadsFinished[__thread_id-2] = 1; // with barriers this is not necessary...
+            barrierWait(0);
+            //barrierWait(1); //barrier solution
         }else {
             localTempResult = Affinity_CalcFunc(i);
 
             //finished and waiting for hyper-thread
-//            while(hyperThreadsFinished[__thread_id] == 0){
-//                instructionsWasted++;
-//            }
-            barrierWait();
+            while(hyperThreadsFinished[__thread_id] == 0);
+
+            //barrierWait(0); //barrier solution
 
             if (localTempResult == globalTempResults[__thread_id]) {
                 tempResult += localTempResult;
+
                 // for next iteration
-                hyperThreadsFinished[__thread_id] = 0;
+                hyperThreadsFinished[__thread_id] = 0; // again, with barriers this is not necessary...
 
             } else {
                 // do something, restore to checkpoint I guess
             }
+            //barrierWait(1); //barrier solution
+
+            barrierWait(0);
         }
     }
 
@@ -280,8 +292,7 @@ void CoreAffinity_Replication_Test(ExecutionType executionType){
             break;
         case hyperReplicated:
             numThreads = 4;
-            pthread_barrier_init(&barrierCore0, NULL, numThreads / 2);
-            pthread_barrier_init(&barrierCore1, NULL, numThreads / 2);
+            barrierInit();
             _start_routine = &thread_task_hyper_replicated;
             break;
     }
