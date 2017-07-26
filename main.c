@@ -1,5 +1,6 @@
 #include "BenchmarkSupport.h"
 #include "TestCoreAffinity.h"
+#include "Test_HyperThread.h"
 
 ///
 /// Main method of the prototype
@@ -19,7 +20,9 @@ int main(int argc, char **argv){
     //CoreAffinity_Replication_Test(normal);
     //CoreAffinity_Replication_Test(normallyReplicated);
     //CoreAffinity_Replication_Test(normallyReplicatedWithHT);
-    CoreAffinity_Replication_Test(hyperReplicated);
+    //CoreAffinity_Replication_Test(hyperReplicated);
+
+    HyperThreads_PingPongTest(0);
 
     return 0;
 }
