@@ -7,13 +7,11 @@
 __thread int _thread_id;
 int sharedValue = 0;
 
-void* PingPong(void * arg){
-    _thread_id = (int) (int64_t) arg;
-    int i = 0;
+void SetThreadAffinity(int threadId){
     cpu_set_t cpuset;
 
     CPU_ZERO(&cpuset);
-    CPU_SET(_thread_id, &cpuset);
+    CPU_SET(threadId, &cpuset);
 
     if(THREAD_UTILS_NUM_THREADS > 1) {
         /* pin the thread to a core */
@@ -22,6 +20,12 @@ void* PingPong(void * arg){
             exit(1);
         }
     }
+}
+
+void* PingPong(void * arg){
+    _thread_id = (int) (int64_t) arg;
+    int i = 0;
+    SetThreadAffinity(_thread_id);
 
     for(; i < 100000000; i++){
 
@@ -41,9 +45,8 @@ void HyperThreads_PingPongTest(int useHyperThread) {
 
     GTimer *timer = g_timer_new();
 
-
     err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
-                         (void *) (int64_t) (useHyperThread) ? 2 : 1);
+                         (void*) (int64_t) ((useHyperThread) ? 2 : 1));
 
     if (err) {
         fprintf(stderr, "Failed to create thread %d\n", i);
@@ -64,4 +67,190 @@ void HyperThreads_PingPongTest(int useHyperThread) {
     THREAD_UTILS_DestroyThreads();
 
     printf("Total number of seconds %f\n", seconds_elapsed);
+}
+
+//////////////////////// QUEUE TESTS ////////////////////////////
+SectionQueue sectionQueue;
+
+long CalcFunction(int index, long value){
+    return index % 2 ? value * 2 : -value * 2;
+}
+
+#define MODULO 20
+
+void TestQueue_ThreadProducer(void * arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, auxValue, result = 0;
+
+    long auxValues[MODULO];
+    int modulo, j;
+
+    SetThreadAffinity(_thread_id);
+
+    for (i = 0; i < NUM_VALUES; i++){
+
+        ///////////// Enqueing MODULO times each time
+        modulo = i % MODULO;
+
+        auxValues[modulo] = CalcFunction(i, values[i]);
+        result += auxValues[modulo];
+
+        if (modulo == MODULO-1) {
+
+            for(j = 0; j < MODULO; j++){
+                SectionQueue_Enqueue(&sectionQueue, auxValues[j]);
+            }
+
+        }
+        ///////////// Enqueing every time
+
+//        auxValue = CalcFunction(i, values[i]);
+//        SectionQueue_Enqueue(&sectionQueue, auxValue);
+        //printf("Enqueue %ld %ld\n", i, auxValue);
+    }
+
+}
+
+void TestQueue_ThreadConsumer(void * arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, auxValue, otherValue, result = 0;
+    long auxValues[MODULO];
+    int modulo, j;
+
+    SetThreadAffinity(_thread_id);
+
+    for (i = 0; i < NUM_VALUES; i++){
+        ///////////// Dequeuing MODULO times each time
+        modulo = i % MODULO;
+        auxValues[modulo] = CalcFunction(i, values[i]);
+
+        if (modulo == MODULO -1) {
+
+            for(j = 0; j < MODULO; j++){
+                otherValue = SectionQueue_Dequeue(&sectionQueue);
+
+                if(auxValues[j] != otherValue){
+                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], auxValue, otherValue);
+                    exit(1);
+                }
+
+                result += otherValue;
+            }
+        }
+
+        ///////////// Dequeuing Every time
+//        auxValue = CalcFunction(i, values[i]);
+//        otherValue = SectionQueue_Dequeue(&sectionQueue);
+//
+//        if(auxValue != otherValue){
+//            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], auxValue, otherValue);
+//            exit(1);
+//        }
+//
+//        result += otherValue;
+
+        //printf("Dequeue Value %ld %ld\n", i, otherValue);
+    }
+}
+
+double HyperThreads_QueueTestReplicated(int useHyperThread) {
+    int err, numThreads;
+    void *_start_routine = &TestQueue_ThreadConsumer;
+    long i;
+
+    sectionQueue = SectionQueue_Init();
+    numThreads = 2;
+
+    // random values
+    for (i = 0; i < NUM_VALUES; i++) {
+        values[i] = rand() % 1000000;
+    }
+
+    THREAD_UTILS_SetNumThreads(numThreads);
+    THREAD_UTILS_CreateThreads();
+
+    GTimer *timer = g_timer_new();
+
+    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
+
+    if (err) {
+        fprintf(stderr, "Failed to create thread %d\n", 1);
+        exit(1);
+    }
+
+
+    TestQueue_ThreadProducer(0);
+
+    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+
+    g_timer_stop(timer);
+    gulong fractional_part = 0;
+    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+    g_timer_destroy(timer);
+
+    THREAD_UTILS_DestroyThreads();
+
+    //SimpleQueue_WastedInst();
+    printf("Total number of seconds %f\n", seconds_elapsed);
+    return seconds_elapsed;
+}
+
+double HyperThreads_QueueTestNotReplicated() {
+    long i, auxValue, result = 0;
+
+    // random values
+    for (i = 0; i < NUM_VALUES; i++) {
+        values[i] = rand() % 1000000;
+    }
+
+    GTimer *timer = g_timer_new();
+
+    for (i = 0; i < NUM_VALUES; i++){
+        auxValue = CalcFunction(i, values[i]);
+        result += auxValue;
+    }
+
+    g_timer_stop(timer);
+    gulong fractional_part = 0;
+    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+    g_timer_destroy(timer);
+
+    printf("Total number of seconds %f\n", seconds_elapsed);
+    return seconds_elapsed;
+}
+
+void HyperThreads_QueueTest(ExecMode execMode){
+    int i = 0, n = 5;
+    double result = 0;
+    for (; i < n; i++) {
+        switch (execMode) {
+            case notReplicated:
+                result += HyperThreads_QueueTestNotReplicated();
+                break;
+            case replicated:
+                result += HyperThreads_QueueTestReplicated(0);
+                break;
+            case replicatedHT:
+                result += HyperThreads_QueueTestReplicated(1);
+                break;
+        }
+    }
+
+    switch (execMode) {
+        case notReplicated:
+            printf("\n---------- Not replicated: ");
+            break;
+        case replicated:
+            printf("\n---------- Replicated: ");
+            break;
+        case replicatedHT:
+            printf("\n----------Replicated Wit Hyper-Threading: ");
+            break;
+    }
+
+    printf("%f \n\n", result / 5);
+
 }

@@ -8,9 +8,8 @@
 /// \return 0
 
 
-#include "TestCoreAffinity.h"
+//#include "TestCoreAffinity.h"
 #include "Test_HyperThread.h"
-#include "Test_Queue.h"
 
 int main(int argc, char **argv){
     //srand(time(NULL));
@@ -27,10 +26,12 @@ int main(int argc, char **argv){
     //CoreAffinity_Replication_Test(hyperReplicated);
 
     //HyperThreads_PingPongTest(0);
-    HyperThreads_PingPongTest(1);
-    //TestQueue_SimpleTest(0);
+
+    //HyperThreads_QueueTest(notReplicated);
+    HyperThreads_QueueTest(replicated);
+    //HyperThreads_QueueTest(replicatedHT);
+
     //BENCHMARK_SUPPORT_EvaluateTransactions(1);
-    //SimpleQueue q1 = SimpleQueue_Init();
 
 
     return 0;
