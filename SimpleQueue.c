@@ -5,8 +5,6 @@
 #include "SimpleQueue.h"
 
 
-
-
 SimpleQueue SimpleQueue_Init(){
     int i;
     SimpleQueue this;

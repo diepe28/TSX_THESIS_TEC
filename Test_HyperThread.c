@@ -42,7 +42,8 @@ void HyperThreads_PingPongTest(int useHyperThread) {
     GTimer *timer = g_timer_new();
 
 
-    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine, (void *) (int64_t) (useHyperThread) ? 2 : 1);
+    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+                         (void *) (int64_t) (useHyperThread) ? 2 : 1);
 
     if (err) {
         fprintf(stderr, "Failed to create thread %d\n", i);

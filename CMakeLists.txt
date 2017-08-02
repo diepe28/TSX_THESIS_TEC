@@ -26,7 +26,7 @@ add_definitions(${GCC_TM_LINK_FLAG})
 #check optimization level -O3
 
 
-set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h Test_HyperThread.c Test_HyperThread.h SimpleQueue.c SimpleQueue.h)
+set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h Test_HyperThread.c Test_HyperThread.h SimpleQueue.c SimpleQueue.h Test_Queue.cpp Test_Queue.h)
 add_executable(tsxExe ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(tsxExe pthread)

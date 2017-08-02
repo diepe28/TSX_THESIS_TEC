@@ -1,7 +1,3 @@
-#include "BenchmarkSupport.h"
-#include "TestCoreAffinity.h"
-#include "Test_HyperThread.h"
-#include "SimpleQueue.h"
 
 ///
 /// Main method of the prototype
@@ -11,6 +7,10 @@
 /// Transactions_Test to test how to recover from errors using Transactional Memory.
 /// \return 0
 
+
+#include "TestCoreAffinity.h"
+#include "Test_HyperThread.h"
+#include "Test_Queue.h"
 
 int main(int argc, char **argv){
     //srand(time(NULL));
@@ -27,18 +27,10 @@ int main(int argc, char **argv){
     //CoreAffinity_Replication_Test(hyperReplicated);
 
     //HyperThreads_PingPongTest(0);
-    SimpleQueue q1 = SimpleQueue_Init();
-    SimpleQueue_Enqueue(&q1, 3);
-    SimpleQueue_Enqueue(&q1, 4);
-    SimpleQueue_Enqueue(&q1, 5);
-
-    SimpleQueue_Enqueue(&q1, 6);
-    SimpleQueue_Enqueue(&q1, 7);
-    SimpleQueue_Enqueue(&q1, 8);
-
-    for(i = 0; i < 6; i++) {
-        printf("Dequeue: %d\n", SimpleQueue_Dequeue(&q1));
-    }
+    HyperThreads_PingPongTest(1);
+    //TestQueue_SimpleTest(0);
+    //BENCHMARK_SUPPORT_EvaluateTransactions(1);
+    //SimpleQueue q1 = SimpleQueue_Init();
 
 
     return 0;
