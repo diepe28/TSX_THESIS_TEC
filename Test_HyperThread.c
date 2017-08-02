@@ -77,6 +77,43 @@ long CalcFunction(int index, long value){
     return index % 2 ? value * 2 : -value * 2;
 }
 
+void TestQueue_ThreadProducerOptimal(void * arg) {
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, auxValue, result = 0;
+
+    SetThreadAffinity(_thread_id);
+
+    for (i = 0; i < NUM_VALUES; i++) {
+        auxValue = CalcFunction(i, values[i]);
+        result += auxValue;
+        //printf("Enqueue %ld %ld\n", i, auxValue);
+    }
+
+}
+
+void TestQueue_ThreadConsumerOptimal(void * arg) {
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, auxValue, otherValue, result = 0;
+
+
+    SetThreadAffinity(_thread_id);
+
+    for (i = 0; i < NUM_VALUES; i++) {
+        auxValue = CalcFunction(i, values[i]);
+        otherValue = auxValue;
+
+        if (auxValue != otherValue) {
+            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i,
+                   values[i], auxValue, otherValue);
+            exit(1);
+        }
+
+        result += otherValue;
+        //printf("Dequeue Value %ld %ld\n", i, otherValue);
+    }
+
+}
+
 #define MODULO 10
 
 void TestQueue_ThreadProducer(void * arg){
@@ -155,6 +192,51 @@ void TestQueue_ThreadConsumer(void * arg){
 
 }
 
+double HyperThreads_QueueTestReplicatedOptimally() {
+    int err, numThreads;
+    void *_start_routine = &TestQueue_ThreadConsumerOptimal;
+    long i;
+
+    bool useHyperThread = false;
+    numThreads = 2;
+
+    // random values
+    for (i = 0; i < NUM_VALUES; i++) {
+        values[i] = rand() % 1000000;
+    }
+
+    THREAD_UTILS_SetNumThreads(numThreads);
+    THREAD_UTILS_CreateThreads();
+
+    GTimer *timer = g_timer_new();
+
+    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
+
+    if (err) {
+        fprintf(stderr, "Failed to create thread %d\n", 1);
+        exit(1);
+    }
+
+
+    TestQueue_ThreadProducerOptimal(0);
+
+    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+
+    g_timer_stop(timer);
+    gulong fractional_part = 0;
+    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+    g_timer_destroy(timer);
+
+    THREAD_UTILS_DestroyThreads();
+
+    //SimpleQueue_WastedInst();
+    printf("Total number of seconds %f\n", seconds_elapsed);
+    return seconds_elapsed;
+}
+
 double HyperThreads_QueueTestReplicated(int useHyperThread) {
     int err, numThreads;
     void *_start_routine = &TestQueue_ThreadConsumer;
@@ -224,6 +306,37 @@ double HyperThreads_QueueTestNotReplicated() {
     return seconds_elapsed;
 }
 
+double HyperThreads_SameThreadReplicated(){
+    long i, v1, v2,  result = 0;
+
+    // random values
+    for (i = 0; i < NUM_VALUES; i++) {
+        values[i] = rand() % 1000000;
+    }
+
+    GTimer *timer = g_timer_new();
+
+    for (i = 0; i < NUM_VALUES; i++){
+        v1 = CalcFunction(i, values[i]);
+        v2 = CalcFunction(i, values[i]);
+
+        if(v1 != v2){
+            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], v1, v2);
+            exit(1);
+        }
+
+        result += v1;
+    }
+
+    g_timer_stop(timer);
+    gulong fractional_part = 0;
+    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+    g_timer_destroy(timer);
+
+    printf("Total number of seconds %f\n", seconds_elapsed);
+    return seconds_elapsed;
+}
+
 void HyperThreads_QueueTest(ExecMode execMode){
     int i = 0, n = 5;
     double result = 0;
@@ -231,7 +344,7 @@ void HyperThreads_QueueTest(ExecMode execMode){
     checkingEachModuleTime = false;
 
     if(execMode == replicated_CheckImproved){
-        execMode = replicated;
+        execMode = replicatedThreads;
         checkingEachModuleTime = true;
     }else{
         if (execMode == replicatedHT_CheckImproved){
@@ -245,7 +358,13 @@ void HyperThreads_QueueTest(ExecMode execMode){
             case notReplicated:
                 result += HyperThreads_QueueTestNotReplicated();
                 break;
-            case replicated:
+            case replicatedSameThread:
+                result += HyperThreads_SameThreadReplicated();
+                break;
+            case replicatedThreadsOptimally:
+                result += HyperThreads_QueueTestReplicatedOptimally();
+                break;
+            case replicatedThreads:
                 result += HyperThreads_QueueTestReplicated(0);
                 break;
             case replicatedHT:
@@ -258,8 +377,14 @@ void HyperThreads_QueueTest(ExecMode execMode){
         case notReplicated:
             printf("\n---------- Not replicated: ");
             break;
-        case replicated:
-            printf("\n---------- Replicated %s: ", checkingEachModuleTime? " check improved" : "");
+        case replicatedSameThread:
+            printf("\n---------- Replicated in the same thread: ");
+            break;
+        case replicatedThreadsOptimally:
+            printf("\n---------- Replicated With Threads Optimally: ");
+            break;
+        case replicatedThreads:
+            printf("\n---------- Replicated With Threads %s: ", checkingEachModuleTime? " check improved" : "");
             break;
         case replicatedHT:
             printf("\n----------Replicated Wit Hyper-Threading %s: ", checkingEachModuleTime? " check improved" : "");

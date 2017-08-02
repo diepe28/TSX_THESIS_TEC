@@ -27,8 +27,10 @@ int main(int argc, char **argv){
 
     //HyperThreads_PingPongTest(0);
 
-    //HyperThreads_QueueTest(notReplicated);
-    HyperThreads_QueueTest(replicated);
+    HyperThreads_QueueTest(notReplicated);
+    HyperThreads_QueueTest(replicatedSameThread);
+    HyperThreads_QueueTest(replicatedThreadsOptimally);
+    //HyperThreads_QueueTest(replicatedThreads);
     //HyperThreads_QueueTest(replicated_CheckImproved);
     HyperThreads_QueueTest(replicatedHT);
     //HyperThreads_QueueTest(replicatedHT_CheckImproved);

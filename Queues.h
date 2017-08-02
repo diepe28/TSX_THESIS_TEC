@@ -16,7 +16,9 @@ extern long consumerWasted;
 
 typedef enum{
     notReplicated,
-    replicated,
+    replicatedSameThread,
+    replicatedThreads,
+    replicatedThreadsOptimally,
     replicated_CheckImproved,
     replicatedHT,
     replicatedHT_CheckImproved
