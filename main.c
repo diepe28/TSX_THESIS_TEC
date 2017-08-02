@@ -29,7 +29,9 @@ int main(int argc, char **argv){
 
     //HyperThreads_QueueTest(notReplicated);
     HyperThreads_QueueTest(replicated);
-    //HyperThreads_QueueTest(replicatedHT);
+    //HyperThreads_QueueTest(replicated_CheckImproved);
+    HyperThreads_QueueTest(replicatedHT);
+    //HyperThreads_QueueTest(replicatedHT_CheckImproved);
 
     //BENCHMARK_SUPPORT_EvaluateTransactions(1);
 

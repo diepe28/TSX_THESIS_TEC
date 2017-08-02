@@ -17,7 +17,9 @@ extern long consumerWasted;
 typedef enum{
     notReplicated,
     replicated,
-    replicatedHT
+    replicated_CheckImproved,
+    replicatedHT,
+    replicatedHT_CheckImproved
 }ExecMode;
 
 typedef struct{
@@ -30,7 +32,6 @@ typedef struct{
     int deqPtr;
     int enqueueSection;
     int dequeueSection;
-    int totalSpaces;
     Section sections[NUM_SECTIONS];
 }SectionQueue;
 

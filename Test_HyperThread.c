@@ -71,44 +71,43 @@ void HyperThreads_PingPongTest(int useHyperThread) {
 
 //////////////////////// QUEUE TESTS ////////////////////////////
 SectionQueue sectionQueue;
+bool checkingEachModuleTime = false;
 
 long CalcFunction(int index, long value){
     return index % 2 ? value * 2 : -value * 2;
 }
 
-#define MODULO 20
+#define MODULO 10
 
 void TestQueue_ThreadProducer(void * arg){
     _thread_id = (int) (int64_t) arg;
     long i = 0, auxValue, result = 0;
 
-    long auxValues[MODULO];
-    int modulo, j;
-
     SetThreadAffinity(_thread_id);
 
-    for (i = 0; i < NUM_VALUES; i++){
+    ///////////// Enqueing MODULO times each time
+    if(checkingEachModuleTime){
+        long auxValues[MODULO];
+        int modulo, j;
 
-        ///////////// Enqueing MODULO times each time
-        modulo = i % MODULO;
+        for (i = 0; i < NUM_VALUES; i++){
+            modulo = i % MODULO;
 
-        auxValues[modulo] = CalcFunction(i, values[i]);
-        result += auxValues[modulo];
+            auxValues[modulo] = CalcFunction(i, values[i]);
+            result += auxValues[modulo];
 
-        if (modulo == MODULO-1) {
-
-            for(j = 0; j < MODULO; j++){
-                SectionQueue_Enqueue(&sectionQueue, auxValues[j]);
-            }
-
+            if (modulo == MODULO-1)
+                for(j = 0; j < MODULO; j++)
+                    SectionQueue_Enqueue(&sectionQueue, auxValues[j]);
         }
-        ///////////// Enqueing every time
-
-//        auxValue = CalcFunction(i, values[i]);
-//        SectionQueue_Enqueue(&sectionQueue, auxValue);
-        //printf("Enqueue %ld %ld\n", i, auxValue);
+    } else{ ///////////// Enqueing every time
+        for (i = 0; i < NUM_VALUES; i++) {
+            auxValue = CalcFunction(i, values[i]);
+            SectionQueue_Enqueue(&sectionQueue, auxValue);
+            result += auxValue;
+            //printf("Enqueue %ld %ld\n", i, auxValue);
+        }
     }
-
 }
 
 void TestQueue_ThreadConsumer(void * arg){
@@ -119,38 +118,41 @@ void TestQueue_ThreadConsumer(void * arg){
 
     SetThreadAffinity(_thread_id);
 
-    for (i = 0; i < NUM_VALUES; i++){
-        ///////////// Dequeuing MODULO times each time
-        modulo = i % MODULO;
-        auxValues[modulo] = CalcFunction(i, values[i]);
+    ///////////// Dequeuing each MODULO times
+    if(checkingEachModuleTime) {
+        for (i = 0; i < NUM_VALUES; i++) {
+            modulo = i % MODULO;
+            auxValues[modulo] = CalcFunction(i, values[i]);
 
-        if (modulo == MODULO -1) {
+            if (modulo == MODULO - 1) {
+                for (j = 0; j < MODULO; j++) {
+                    otherValue = SectionQueue_Dequeue(&sectionQueue);
 
-            for(j = 0; j < MODULO; j++){
-                otherValue = SectionQueue_Dequeue(&sectionQueue);
-
-                if(auxValues[j] != otherValue){
-                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], auxValue, otherValue);
-                    exit(1);
+                    if (auxValues[j] != otherValue) {
+                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n",
+                               i,
+                               values[i], auxValue, otherValue);
+                        exit(1);
+                    }
+                    result += otherValue;
                 }
-
-                result += otherValue;
             }
         }
+    } else { ///////////// Dequeuing Every time
+        for (i = 0; i < NUM_VALUES; i++) {
+        auxValue = CalcFunction(i, values[i]);
+        otherValue = SectionQueue_Dequeue(&sectionQueue);
 
-        ///////////// Dequeuing Every time
-//        auxValue = CalcFunction(i, values[i]);
-//        otherValue = SectionQueue_Dequeue(&sectionQueue);
-//
-//        if(auxValue != otherValue){
-//            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], auxValue, otherValue);
-//            exit(1);
-//        }
-//
-//        result += otherValue;
+        if(auxValue != otherValue){
+            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], auxValue, otherValue);
+            exit(1);
+        }
 
+        result += otherValue;
         //printf("Dequeue Value %ld %ld\n", i, otherValue);
+        }
     }
+
 }
 
 double HyperThreads_QueueTestReplicated(int useHyperThread) {
@@ -225,6 +227,19 @@ double HyperThreads_QueueTestNotReplicated() {
 void HyperThreads_QueueTest(ExecMode execMode){
     int i = 0, n = 5;
     double result = 0;
+
+    checkingEachModuleTime = false;
+
+    if(execMode == replicated_CheckImproved){
+        execMode = replicated;
+        checkingEachModuleTime = true;
+    }else{
+        if (execMode == replicatedHT_CheckImproved){
+            execMode = replicatedHT;
+            checkingEachModuleTime = true;
+        }
+    }
+
     for (; i < n; i++) {
         switch (execMode) {
             case notReplicated:
@@ -244,10 +259,10 @@ void HyperThreads_QueueTest(ExecMode execMode){
             printf("\n---------- Not replicated: ");
             break;
         case replicated:
-            printf("\n---------- Replicated: ");
+            printf("\n---------- Replicated %s: ", checkingEachModuleTime? " check improved" : "");
             break;
         case replicatedHT:
-            printf("\n----------Replicated Wit Hyper-Threading: ");
+            printf("\n----------Replicated Wit Hyper-Threading %s: ", checkingEachModuleTime? " check improved" : "");
             break;
     }
 
