@@ -4,6 +4,10 @@
 
 #include "Queues.h"
 
+//////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////// Multi Section Queue ////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
 long producerWasted = 0;
 long consumerWasted = 0;
 
@@ -51,4 +55,28 @@ long SectionQueue_Dequeue(SectionQueue* this){
 
 void SectionQueue_WastedInst(){
     printf("Consumer wasted %ld, producer wasted: %ld \n", consumerWasted, producerWasted);
+}
+//////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////// Simple Queue ///////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////
+
+SimpleQueue SimpleQueue_Init(){
+    SimpleQueue this;
+    this.enqPtr = this.deqPtr = 0;
+    return this;
+}
+void SimpleQueue_Enqueue(SimpleQueue* this, long value){
+    //printf("Producer enqPtr: %d\n", this->enqPtr);
+    int nextEnqPtr = (this->enqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
+    while(nextEnqPtr == this->deqPtr);
+    this->content[this->enqPtr] = value;
+    this->enqPtr = nextEnqPtr;
+}
+
+long SimpleQueue_Dequeue(SimpleQueue* this){
+    //printf("Consumer deqPtr: %d\n", this->deqPtr);
+    while(this->deqPtr == this->enqPtr);
+    long value = this->content[this->deqPtr];
+    this->deqPtr = (this->deqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
+    return value;
 }

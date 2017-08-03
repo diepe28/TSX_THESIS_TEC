@@ -17,17 +17,17 @@ extern long consumerWasted;
 typedef enum{
     notReplicated,
     replicatedSameThread,
-    replicatedThreads,
     replicatedThreadsOptimally,
-    replicated_CheckImproved,
+    replicatedThreads,
     replicatedHT,
-    replicatedHT_CheckImproved
 }ExecMode;
 
 typedef struct{
     long content[SECTION_SIZE];
     bool isReadMode;
 }Section;
+
+/////////////// Multi section Queue
 
 typedef struct{
     int enqPtr;
@@ -42,5 +42,18 @@ void SectionQueue_Enqueue(SectionQueue* this, long value);
 long SectionQueue_Dequeue(SectionQueue* this);
 
 void SectionQueue_WastedInst();
+
+/////////////// Simple Queue
+#define SIMPLE_QUEUE_MAX_ELEMENTS 100000
+
+typedef struct{
+    long content[SIMPLE_QUEUE_MAX_ELEMENTS];
+    int enqPtr;
+    int deqPtr;
+}SimpleQueue;
+
+SimpleQueue SimpleQueue_Init();
+void SimpleQueue_Enqueue(SimpleQueue* this, long value);
+long SimpleQueue_Dequeue(SimpleQueue* this);
 
 #endif //TSXPROJECT_SIMPLEQUEUE_H

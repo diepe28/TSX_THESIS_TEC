@@ -12,5 +12,7 @@
 
 void HyperThreads_PingPongTest(int useHyperThread);
 void HyperThreads_QueueTest(ExecMode execMode);
+void HyperThreads_UseSectionQueueType(bool);
+void HyperThreads_CheckEveryTime(bool);
 
 #endif //TSXPROJECT_TEST_HYPERTHREAD_H
