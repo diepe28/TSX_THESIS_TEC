@@ -8,8 +8,8 @@
 ///////////////////////////////// Multi Section Queue ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 
-long producerWasted = 0;
-long consumerWasted = 0;
+long producerCount = 0;
+long consumerCount = 0;
 
 SectionQueue SectionQueue_Init(){
     int i;
@@ -34,6 +34,7 @@ void SectionQueue_Enqueue(SectionQueue* this, long value){
         this->sections[this->enqueueSection].isReadMode = 1;
         this->enqueueSection = (this->enqueueSection + 1) % NUM_SECTIONS;
     }
+    //producerCount++; // to avoid weird behaviour due optimization
 }
 
 long SectionQueue_Dequeue(SectionQueue* this){
@@ -49,12 +50,12 @@ long SectionQueue_Dequeue(SectionQueue* this){
         this->sections[this->dequeueSection].isReadMode = 0;
         this->dequeueSection = (this->dequeueSection + 1) % NUM_SECTIONS;
     }
-
+    //consumerCount++; // to avoid weird behaviour due optimization
     return value;
 }
 
 void SectionQueue_WastedInst(){
-    printf("Consumer wasted %ld, producer wasted: %ld \n", consumerWasted, producerWasted);
+    printf("Consumer wasted %ld, producer wasted: %ld \n", consumerCount, producerCount);
 }
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////// Simple Queue ///////////////////////////////////////
@@ -71,6 +72,7 @@ void SimpleQueue_Enqueue(SimpleQueue* this, long value){
     while(nextEnqPtr == this->deqPtr);
     this->content[this->enqPtr] = value;
     this->enqPtr = nextEnqPtr;
+    //producerCount++; // to avoid weird behaviour due optimization
 }
 
 long SimpleQueue_Dequeue(SimpleQueue* this){
@@ -78,5 +80,6 @@ long SimpleQueue_Dequeue(SimpleQueue* this){
     while(this->deqPtr == this->enqPtr);
     long value = this->content[this->deqPtr];
     this->deqPtr = (this->deqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
+    //consumerCount++; // to avoid weird behaviour due optimization
     return value;
 }

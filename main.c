@@ -42,16 +42,25 @@ int main(int argc, char **argv){
     //HyperThreads_PingPongTest(0);
 
     // Heuristics
-//    HyperThreads_QueueTest(notReplicated);
-//    HyperThreads_QueueTest(replicatedSameThread);
-//    HyperThreads_QueueTest(replicatedThreadsOptimally);
+    HyperThreads_QueueTest(notReplicated);
+    HyperThreads_QueueTest(replicatedSameThread);
+    HyperThreads_QueueTest(replicatedThreadsOptimally);
 
     // Every Time Simple Queue
-//    HyperThreads_SetCheckFrequency(everyTime);
-//    HyperThreads_SetQueueType(simpleQueueType);
-//
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHT);
+    HyperThreads_SetCheckFrequency(everyTime);
+    HyperThreads_SetQueueType(simpleQueueType);
+
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHT);
+
+    HyperThreads_SetCheckFrequency(eachModuloTimes);
+
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHT);
+
+    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHT);
 
     // Every Time Section Queue
 //    HyperThreads_SetCheckFrequency(everyTime);
@@ -61,11 +70,11 @@ int main(int argc, char **argv){
 //    HyperThreads_QueueTest(replicatedHT);
 
     // Every Time Lynx Queue
-    HyperThreads_SetCheckFrequency(everyTime);
-    HyperThreads_SetQueueType(lynxqQueueType);
-
-    HyperThreads_QueueTest(replicatedThreads);
-    HyperThreads_QueueTest(replicatedHT);
+//    HyperThreads_SetCheckFrequency(everyTime);
+//    HyperThreads_SetQueueType(lynxqQueueType);
+//
+//    HyperThreads_QueueTest(replicatedThreads);
+//    HyperThreads_QueueTest(replicatedHT);
 
 //    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
 //    HyperThreads_UseSectionQueueType(true);

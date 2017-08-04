@@ -85,6 +85,7 @@ long CalcFunction(int index, long value){
 }
 
 /////////////////// Heuristics ///////////////////
+volatile long consumerResult, producerResult = 0;
 
 void TestQueue_ThreadProducerOptimal(void * arg) {
     _thread_id = (int) (int64_t) arg;
@@ -95,9 +96,9 @@ void TestQueue_ThreadProducerOptimal(void * arg) {
     for (i = 0; i < NUM_VALUES; i++) {
         auxValue = CalcFunction(i, values[i]);
         result += auxValue;
-        //printf("Enqueue %ld %ld\n", i, auxValue);
+        //printf("Producer local result %ld\n", result);
     }
-
+    producerResult = result;
 }
 
 void TestQueue_ThreadConsumerOptimal(void * arg) {
@@ -108,7 +109,8 @@ void TestQueue_ThreadConsumerOptimal(void * arg) {
 
     for (i = 0; i < NUM_VALUES; i++) {
         auxValue = CalcFunction(i, values[i]);
-        otherValue = auxValue;
+        otherValue = auxValue + 1;
+        otherValue--;
 
         if (auxValue != otherValue) {
             printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i,
@@ -116,10 +118,11 @@ void TestQueue_ThreadConsumerOptimal(void * arg) {
             exit(1);
         }
 
-        result += otherValue;
-        //printf("Dequeue Value %ld %ld\n", i, otherValue);
+        result += auxValue;
+        //printf("Consumer local result %ld\n", result);
     }
 
+    consumerResult = result;
 }
 
 double HyperThreads_QueueTestReplicatedOptimally() {
@@ -129,11 +132,6 @@ double HyperThreads_QueueTestReplicatedOptimally() {
 
     bool useHyperThread = true;
     numThreads = 2;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
 
     THREAD_UTILS_SetNumThreads(numThreads);
     THREAD_UTILS_CreateThreads();
@@ -162,17 +160,13 @@ double HyperThreads_QueueTestReplicatedOptimally() {
 
     THREAD_UTILS_DestroyThreads();
 
-    printf("Total number of seconds %f\n", seconds_elapsed);
+    if(producerResult == consumerResult)
+        printf("Total Result: %ld--- number of seconds %f\n", producerResult, seconds_elapsed);
     return seconds_elapsed;
 }
 
 double HyperThreads_SameThreadReplicated(){
     long i, v1, v2,  result = 0;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
 
     GTimer *timer = g_timer_new();
 
@@ -188,22 +182,19 @@ double HyperThreads_SameThreadReplicated(){
         result += v1;
     }
 
+    producerResult = result;
+
     g_timer_stop(timer);
     gulong fractional_part = 0;
     gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
     g_timer_destroy(timer);
 
-    printf("Total number of seconds %f\n", seconds_elapsed);
+    printf("Total Result: %ld --- number of seconds %f, \n", producerResult, seconds_elapsed);
     return seconds_elapsed;
 }
 
 double HyperThreads_QueueTestNotReplicated() {
     long i, auxValue, result = 0;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
 
     GTimer *timer = g_timer_new();
 
@@ -212,16 +203,20 @@ double HyperThreads_QueueTestNotReplicated() {
         result += auxValue;
     }
 
+    producerResult = result;
+
     g_timer_stop(timer);
     gulong fractional_part = 0;
     gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
     g_timer_destroy(timer);
 
-    printf("Total number of seconds %f\n", seconds_elapsed);
+    printf("Total Result: %ld --- number of seconds %f, \n", producerResult, seconds_elapsed);
     return seconds_elapsed;
 }
 
 #define MODULO 5
+
+///// Lynx Queue /////
 
 void TestLynxQueue_Producer(void *arg) {
     _thread_id = (int) (int64_t) arg;
@@ -236,10 +231,9 @@ void TestLynxQueue_Producer(void *arg) {
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
-                SimpleQueue_Enqueue(&simpleQueue, calcValue);
                 queue_push_long(lynxQ1, calcValue);
-                queue_push_done(lynxQ1);
             }
+            queue_push_done(lynxQ1);
             break;
 
         case eachModuloTimes:
@@ -251,9 +245,9 @@ void TestLynxQueue_Producer(void *arg) {
                 if (modulo == MODULO - 1)
                     for (j = 0; j < MODULO; j++) {
                         queue_push_long(lynxQ1, auxValues[j]);
-                        queue_push_done(lynxQ1);
                     }
             }
+            queue_push_done(lynxQ1);
             break;
 
         case eachModuloTimes_Encoding:
@@ -264,12 +258,14 @@ void TestLynxQueue_Producer(void *arg) {
 
                 if (i % MODULO == MODULO - 1) {
                     queue_push_long(lynxQ1, xorMine);
-                    queue_push_done(lynxQ1);
                     xorMine = 0;
                 }
             }
+            queue_push_done(lynxQ1);
             break;
     }
+
+    producerResult = result;
 }
 
 void TestLynxQueue_Consumer(void *arg){
@@ -287,8 +283,7 @@ void TestLynxQueue_Consumer(void *arg){
         case everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
-                otherValue = queue_pop_long(lynxQ1);
-                queue_pop_done(lynxQ1);
+                //otherValue = queue_pop_long(lynxQ1);
 
                 if (auxValue != otherValue) {
                     printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
@@ -296,6 +291,7 @@ void TestLynxQueue_Consumer(void *arg){
                 }
                 result += otherValue;
             }
+            queue_pop_done(lynxQ1);
             break;
 
         case eachModuloTimes:
@@ -305,15 +301,14 @@ void TestLynxQueue_Consumer(void *arg){
 
                 if (modulo == MODULO - 1) {
                     for (j = 0; j < MODULO; j++) {
-                        otherValue = queue_pop_long(lynxQ1);
-                        queue_pop_done(lynxQ1);
-
+                        //otherValue = queue_pop_long(lynxQ1);
                         if (auxValues[j] != otherValue) {
                             printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
                             exit(1);
                         }
                         result += otherValue;
                     }
+                    queue_pop_done(lynxQ1);
                 }
             }
             break;
@@ -327,8 +322,7 @@ void TestLynxQueue_Consumer(void *arg){
                 result += auxValues[modulo];
 
                 if (modulo == MODULO - 1) {
-                    xorResultT1 = queue_pop_long(lynxQ1);
-                    queue_pop_done(lynxQ1);
+                    //xorResultT1 = queue_pop_long(lynxQ1);
                     if (xorResultT1 != xorResultMine) {
                         printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
                         exit(1);
@@ -336,10 +330,14 @@ void TestLynxQueue_Consumer(void *arg){
                     xorResultMine = 0;
                 }
             }
+            queue_pop_done(lynxQ1);
             break;
     }
+
+    consumerResult = result;
 }
 
+///// Section Queue /////
 void TestSectionQueue_Producer(void *arg){
     _thread_id = (int) (int64_t) arg;
     long i = 0, calcValue, result = 0, xorMine = 0;
@@ -382,6 +380,7 @@ void TestSectionQueue_Producer(void *arg){
             }
             break;
     }
+    producerResult = result;
 }
 
 void TestSectionQueue_Consumer(void *arg){
@@ -444,8 +443,10 @@ void TestSectionQueue_Consumer(void *arg){
             }
             break;
     }
-
+    consumerResult = result;
 }
+
+///// Simple Queue /////
 
 void TestSimpleQueue_Producer(void *arg) {
     _thread_id = (int) (int64_t) arg;
@@ -489,6 +490,8 @@ void TestSimpleQueue_Producer(void *arg) {
             }
             break;
     }
+
+    producerResult = result;
 }
 
 void TestSimpleQueue_Consumer(void *arg){
@@ -551,12 +554,18 @@ void TestSimpleQueue_Consumer(void *arg){
             }
             break;
     }
+
+    consumerResult = result;
 }
+
+bool areValuesCalculated = false;
 
 double HyperThreads_QueueTestReplicated(int useHyperThread) {
     int err, numThreads;
     void *_start_routine;
     long i;
+
+    consumerCount = producerCount = 0;
 
     switch (queueType) {
         case simpleQueueType:
@@ -576,11 +585,6 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     }
 
     numThreads = 2;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
 
     THREAD_UTILS_SetNumThreads(numThreads);
     THREAD_UTILS_CreateThreads();
@@ -621,7 +625,8 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     if(lynxQ1)
         free(lynxQ1);
 
-    printf("Total number of seconds %f\n", seconds_elapsed);
+    if(producerResult == consumerResult)
+        printf("Total Result: %ld --- produced %ld consumed %ld --- number of seconds %f\n", producerResult, producerCount, consumerCount, seconds_elapsed);
     return seconds_elapsed;
 }
 
@@ -629,7 +634,15 @@ void HyperThreads_QueueTest(ExecMode execMode){
     int i = 0, n = 5;
     double mean = 0;
 
-    for (; i < n; i++) {
+    if(!areValuesCalculated) {
+        // random values
+        for (i = 0; i < NUM_VALUES; i++) {
+            values[i] = rand() % 1000000;
+        }
+        areValuesCalculated = true;
+    }
+
+    for (i=0; i < n; i++) {
         switch (execMode) {
             case notReplicated:
                 mean += HyperThreads_QueueTestNotReplicated();

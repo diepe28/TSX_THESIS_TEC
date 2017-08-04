@@ -9,13 +9,13 @@
 #include <stdio.h>
 #include "lynxq.h"
 
-#define LYNXQ_QUEUE_SIZE (1<<21)	/* 2MB */
+#define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
 
 #define SECTION_SIZE 10000
 #define NUM_SECTIONS 3
 
-extern long producerWasted;
-extern long consumerWasted;
+extern long producerCount;
+extern long consumerCount;
 
 typedef enum{
     notReplicated,
