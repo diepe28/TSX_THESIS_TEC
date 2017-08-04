@@ -7,6 +7,9 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include "lynxq.h"
+
+#define LYNXQ_QUEUE_SIZE (1<<21)	/* 2MB */
 
 #define SECTION_SIZE 10000
 #define NUM_SECTIONS 3
@@ -30,11 +33,11 @@ typedef struct{
 /////////////// Multi section Queue
 
 typedef struct{
-    int enqPtr;
-    int deqPtr;
+    volatile  int enqPtr;
+    volatile int deqPtr;
     int enqueueSection;
     int dequeueSection;
-    Section sections[NUM_SECTIONS];
+    volatile Section sections[NUM_SECTIONS];
 }SectionQueue;
 
 SectionQueue SectionQueue_Init();
@@ -48,8 +51,8 @@ void SectionQueue_WastedInst();
 
 typedef struct{
     long content[SIMPLE_QUEUE_MAX_ELEMENTS];
-    int enqPtr;
-    int deqPtr;
+    volatile int enqPtr;
+    volatile int deqPtr;
 }SimpleQueue;
 
 SimpleQueue SimpleQueue_Init();

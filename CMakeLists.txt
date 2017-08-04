@@ -1,7 +1,12 @@
+
 # Set the name and the supported language of the project
 project(tsxProject C)
 # Set the minimum version of cmake required to build this project
 cmake_minimum_required(VERSION 3.7)
+
+#set( CMAKE_VERBOSE_MAKEFILE on)
+
+set(CMAKE_BUILD_TYPE Release) # optimizations, but debuging is not allowed
 
 # Use the package PkgConfig to detect GTK+ headers/library files
 find_package(PkgConfig REQUIRED)
@@ -21,13 +26,16 @@ if (GTK2_FOUND)
 endif (GTK2_FOUND)
 
 set(CMAKE_C_STANDARD 99)
-set(GCC_TM_LINK_FLAG    '-fgnu-tm')
+set(GCC_TM_LINK_FLAG -fgnu-tm)
+
 add_definitions(${GCC_TM_LINK_FLAG})
 #check optimization level -O3
 
 
-set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h Test_HyperThread.c Test_HyperThread.h Queues.c Queues.h)
+set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h Test_HyperThread.c Test_HyperThread.h Queues.c Queues.h lynxq.h)
 add_executable(tsxExe ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(tsxExe pthread)
+TARGET_LINK_LIBRARIES(tsxExe capstone)
+
 TARGET_LINK_LIBRARIES(tsxExe m)

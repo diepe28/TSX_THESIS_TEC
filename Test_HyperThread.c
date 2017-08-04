@@ -3,6 +3,7 @@
 //
 
 #include "Test_HyperThread.h"
+#define DATATYPE long
 
 __thread int _thread_id;
 int sharedValue = 0;
@@ -72,14 +73,18 @@ void HyperThreads_PingPongTest(int useHyperThread) {
 //////////////////////// QUEUE TESTS ////////////////////////////
 SectionQueue sectionQueue;
 SimpleQueue simpleQueue;
-bool checkEveryTime = true;
-bool useSectionQueue = false;
+lynxQ_t lynxQ1;
+
+CheckFrequency checkFrequency = everyTime;
+QueueType queueType = simpleQueueType;
 
 long CalcFunction(int index, long value){
     return index % 2 ?
            sqrt(3 * (value +1)) * 2 :
            - sqrt(3 * (value +1)) * 2;
 }
+
+/////////////////// Heuristics ///////////////////
 
 void TestQueue_ThreadProducerOptimal(void * arg) {
     _thread_id = (int) (int64_t) arg;
@@ -216,168 +221,336 @@ double HyperThreads_QueueTestNotReplicated() {
     return seconds_elapsed;
 }
 
-#define MODULO 10
+#define MODULO 5
 
-void TestSectionQueue_Producer(void *arg){
+void TestLynxQueue_Producer(void *arg) {
     _thread_id = (int) (int64_t) arg;
-    long i = 0, auxValue, result = 0;
+    long i = 0, calcValue, result = 0, xorMine = 0;
+    long auxValues[MODULO];
+    int modulo, j;
 
     SetThreadAffinity(_thread_id);
 
-    ///////////// Producing every time
-    if(checkEveryTime){
-        for (i = 0; i < NUM_VALUES; i++) {
-            auxValue = CalcFunction(i, values[i]);
-            SectionQueue_Enqueue(&sectionQueue, auxValue);
-            result += auxValue;
-        }
+    switch (checkFrequency) {
+        case everyTime:
+            for (i = 0; i < NUM_VALUES; i++) {
+                calcValue = CalcFunction(i, values[i]);
+                result += calcValue;
+                SimpleQueue_Enqueue(&simpleQueue, calcValue);
+                queue_push_long(lynxQ1, calcValue);
+                queue_push_done(lynxQ1);
+            }
+            break;
 
-    } else{ ///////////// Producing each MODULE times
-        long auxValues[MODULO];
-        int modulo, j;
-        for (i = 0; i < NUM_VALUES; i++){
-            modulo = i % MODULO;
+        case eachModuloTimes:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+                result += auxValues[modulo];
 
-            auxValues[modulo] = CalcFunction(i, values[i]);
-            result += auxValues[modulo];
+                if (modulo == MODULO - 1)
+                    for (j = 0; j < MODULO; j++) {
+                        queue_push_long(lynxQ1, auxValues[j]);
+                        queue_push_done(lynxQ1);
+                    }
+            }
+            break;
 
-            if (modulo == MODULO-1)
-                for(j = 0; j < MODULO; j++)
-                    SectionQueue_Enqueue(&sectionQueue, auxValues[j]);
-        }
+        case eachModuloTimes_Encoding:
+            for (i = 0; i < NUM_VALUES; i++) {
+                calcValue = CalcFunction(i, values[i]);
+                result += calcValue;
+                xorMine ^= calcValue;
+
+                if (i % MODULO == MODULO - 1) {
+                    queue_push_long(lynxQ1, xorMine);
+                    queue_push_done(lynxQ1);
+                    xorMine = 0;
+                }
+            }
+            break;
+    }
+}
+
+void TestLynxQueue_Consumer(void *arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, auxValue, otherValue, result = 0;
+    long auxValues[MODULO], xorResultMine = 0, xorResultT1;
+    int modulo, j;
+
+    SetThreadAffinity(_thread_id);
+
+    /* Busy wait until pop thread is ready to start */
+    queue_busy_wait_pop_ready(lynxQ1);
+
+    switch(checkFrequency) {
+        case everyTime:
+            for (i = 0; i < NUM_VALUES; i++) {
+                auxValue = CalcFunction(i, values[i]);
+                otherValue = queue_pop_long(lynxQ1);
+                queue_pop_done(lynxQ1);
+
+                if (auxValue != otherValue) {
+                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                    exit(1);
+                }
+                result += otherValue;
+            }
+            break;
+
+        case eachModuloTimes:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+
+                if (modulo == MODULO - 1) {
+                    for (j = 0; j < MODULO; j++) {
+                        otherValue = queue_pop_long(lynxQ1);
+                        queue_pop_done(lynxQ1);
+
+                        if (auxValues[j] != otherValue) {
+                            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                            exit(1);
+                        }
+                        result += otherValue;
+                    }
+                }
+            }
+            break;
+
+        case eachModuloTimes_Encoding:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+                xorResultMine ^= auxValues[modulo];
+
+                result += auxValues[modulo];
+
+                if (modulo == MODULO - 1) {
+                    xorResultT1 = queue_pop_long(lynxQ1);
+                    queue_pop_done(lynxQ1);
+                    if (xorResultT1 != xorResultMine) {
+                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                        exit(1);
+                    }
+                    xorResultMine = 0;
+                }
+            }
+            break;
+    }
+}
+
+void TestSectionQueue_Producer(void *arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, calcValue, result = 0, xorMine = 0;
+    long auxValues[MODULO];
+    int modulo, j;
+
+    SetThreadAffinity(_thread_id);
+
+    switch (checkFrequency) {
+        case everyTime:
+            for (i = 0; i < NUM_VALUES; i++) {
+                calcValue = CalcFunction(i, values[i]);
+                SectionQueue_Enqueue(&sectionQueue, calcValue);
+                result += calcValue;
+            }
+            break;
+
+        case eachModuloTimes:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+                result += auxValues[modulo];
+
+                if (modulo == MODULO - 1)
+                    for (j = 0; j < MODULO; j++)
+                        SectionQueue_Enqueue(&sectionQueue, auxValues[j]);
+            }
+            break;
+
+        case eachModuloTimes_Encoding:
+            for (i = 0; i < NUM_VALUES; i++) {
+                calcValue = CalcFunction(i, values[i]);
+                result += calcValue;
+                xorMine ^= calcValue;
+
+                if (i % MODULO == MODULO - 1) {
+                    SectionQueue_Enqueue(&sectionQueue, xorMine);
+                    xorMine = 0;
+                }
+            }
+            break;
     }
 }
 
 void TestSectionQueue_Consumer(void *arg){
     _thread_id = (int) (int64_t) arg;
     long i = 0, auxValue, otherValue, result = 0;
+    long auxValues[MODULO], xorResultMine = 0, xorResultT1;
+    int modulo, j;
+
+    SetThreadAffinity(_thread_id);
+
+    switch(checkFrequency) {
+        case everyTime:
+            for (i = 0; i < NUM_VALUES; i++) {
+                auxValue = CalcFunction(i, values[i]);
+                otherValue = SectionQueue_Dequeue(&sectionQueue);
+
+                if (auxValue != otherValue) {
+                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                    exit(1);
+                }
+                result += otherValue;
+            }
+            break;
+
+        case eachModuloTimes:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+
+                if (modulo == MODULO - 1) {
+                    for (j = 0; j < MODULO; j++) {
+                        otherValue = SectionQueue_Dequeue(&sectionQueue);
+
+                        if (auxValues[j] != otherValue) {
+                            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                            exit(1);
+                        }
+                        result += otherValue;
+                    }
+                }
+            }
+            break;
+
+        case eachModuloTimes_Encoding:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+                xorResultMine ^= auxValues[modulo];
+
+                result += auxValues[modulo];
+
+                if (modulo == MODULO - 1) {
+                    xorResultT1 = SectionQueue_Dequeue(&sectionQueue);
+                    if (xorResultT1 != xorResultMine) {
+                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                        exit(1);
+                    }
+                    xorResultMine = 0;
+                }
+            }
+            break;
+    }
+
+}
+
+void TestSimpleQueue_Producer(void *arg) {
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, calcValue, result = 0, xorMine = 0;
     long auxValues[MODULO];
     int modulo, j;
 
     SetThreadAffinity(_thread_id);
 
-    ///////////// Syncing Every time
-    if(checkEveryTime) {
-        for (i = 0; i < NUM_VALUES; i++) {
-            auxValue = CalcFunction(i, values[i]);
-            otherValue = SectionQueue_Dequeue(&sectionQueue);
-
-            if (auxValue != otherValue) {
-                printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i,
-                       values[i], auxValue, otherValue);
-                exit(1);
+    switch (checkFrequency) {
+        case everyTime:
+            for (i = 0; i < NUM_VALUES; i++) {
+                calcValue = CalcFunction(i, values[i]);
+                result += calcValue;
+                SimpleQueue_Enqueue(&simpleQueue, calcValue);
             }
+            break;
 
-            result += otherValue;
-        }
-    } else {///////////// Consuming each MODULO times
-        for (i = 0; i < NUM_VALUES; i++) {
-            modulo = i % MODULO;
-            auxValues[modulo] = CalcFunction(i, values[i]);
+        case eachModuloTimes:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+                result += auxValues[modulo];
 
-            if (modulo == MODULO - 1) {
-                for (j = 0; j < MODULO; j++) {
-                    otherValue = SectionQueue_Dequeue(&sectionQueue);
+                if (modulo == MODULO - 1)
+                    for (j = 0; j < MODULO; j++)
+                        SimpleQueue_Enqueue(&simpleQueue, auxValues[j]);
+            }
+            break;
 
-                    if (auxValues[j] != otherValue) {
-                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n",
-                               i,
-                               values[i], auxValue, otherValue);
-                        exit(1);
-                    }
-                    result += otherValue;
+        case eachModuloTimes_Encoding:
+            for (i = 0; i < NUM_VALUES; i++) {
+                calcValue = CalcFunction(i, values[i]);
+                result += calcValue;
+                xorMine ^= calcValue;
+
+                if (i % MODULO == MODULO - 1) {
+                    SimpleQueue_Enqueue(&simpleQueue, xorMine);
+                    xorMine = 0;
                 }
             }
-        }
-    }
-
-}
-
-void TestSimpleQueue_Producer(void *arg){
-    _thread_id = (int) (int64_t) arg;
-    long i = 0, auxValue, result = 0;
-
-    SetThreadAffinity(_thread_id);
-
-    ///////////// Producing every time
-    if(checkEveryTime){
-        for (i = 0; i < NUM_VALUES; i++) {
-            auxValue = CalcFunction(i, values[i]);
-            SimpleQueue_Enqueue(&simpleQueue, auxValue);
-            result += auxValue;
-        }
-    } else{ ///////////// Producing each MODULE times
-        long auxValues[MODULO];
-        int modulo, j;
-        for (i = 0; i < NUM_VALUES; i++){
-            modulo = i % MODULO;
-
-            auxValues[modulo] = CalcFunction(i, values[i]);
-            result += auxValues[modulo];
-
-            if (modulo == MODULO-1)
-                for(j = 0; j < MODULO; j++)
-                    SimpleQueue_Enqueue(&simpleQueue, auxValues[j]);
-        }
+            break;
     }
 }
 
 void TestSimpleQueue_Consumer(void *arg){
     _thread_id = (int) (int64_t) arg;
     long i = 0, auxValue, otherValue, result = 0;
-    long auxValues[MODULO], t1Values[MODULO];
+    long auxValues[MODULO], xorResultMine = 0, xorResultT1;
     int modulo, j;
 
     SetThreadAffinity(_thread_id);
 
-    ///////////// Syncing Every time
-    if(checkEveryTime) {
-        for (i = 0; i < NUM_VALUES; i++) {
-            auxValue = CalcFunction(i, values[i]);
-            otherValue = SimpleQueue_Dequeue(&simpleQueue);
+    switch(checkFrequency) {
+        case everyTime:
+            for (i = 0; i < NUM_VALUES; i++) {
+                auxValue = CalcFunction(i, values[i]);
+                otherValue = SimpleQueue_Dequeue(&simpleQueue);
 
-            if (auxValue != otherValue) {
-                printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i,
-                       values[i], auxValue, otherValue);
-                exit(1);
-            }
-
-            result += otherValue;
-        }
-    } else { ///////////// Consuming each MODULO times
-        for (i = 0; i < NUM_VALUES; i++) {
-            modulo = i % MODULO;
-            auxValues[modulo] = CalcFunction(i, values[i]);
-
-            if (modulo == MODULO - 1) {
-//                for (j = 0; j < MODULO; j++) {
-//                    otherValue = SimpleQueue_Dequeue(&simpleQueue);
-//
-//                    if (auxValues[j] != otherValue) {
-//                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n",
-//                               i,
-//                               values[i], auxValue, otherValue);
-//                        exit(1);
-//                    }
-//                    result += otherValue;
-//                }
-                for (j = 0; j < MODULO; j++) {
-                    t1Values[j] = SimpleQueue_Dequeue(&simpleQueue);
-                }
-                if(auxValues[0] != t1Values[0] ||
-                   auxValues[1] != t1Values[1] ||
-                   auxValues[2] != t1Values[2] ||
-                   auxValues[3] != t1Values[3] ||
-                   auxValues[4] != t1Values[4]) {
-                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n",
-                           i, values[i], auxValue, otherValue);
+                if (auxValue != otherValue) {
+                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
                     exit(1);
                 }
-                result += auxValues[0] + auxValues[1] + auxValues[2] + auxValues[3] + auxValues[4];
+                result += otherValue;
             }
-        }
-    }
+            break;
 
+        case eachModuloTimes:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+
+                if (modulo == MODULO - 1) {
+                    for (j = 0; j < MODULO; j++) {
+                        otherValue = SimpleQueue_Dequeue(&simpleQueue);
+
+                        if (auxValues[j] != otherValue) {
+                            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                            exit(1);
+                        }
+                        result += otherValue;
+                    }
+                }
+            }
+            break;
+
+        case eachModuloTimes_Encoding:
+            for (i = 0; i < NUM_VALUES; i++) {
+                modulo = i % MODULO;
+                auxValues[modulo] = CalcFunction(i, values[i]);
+                xorResultMine ^= auxValues[modulo];
+
+                result += auxValues[modulo];
+
+                if (modulo == MODULO - 1) {
+                    xorResultT1 = SimpleQueue_Dequeue(&simpleQueue);
+                    if (xorResultT1 != xorResultMine) {
+                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
+                        exit(1);
+                    }
+                    xorResultMine = 0;
+                }
+            }
+            break;
+    }
 }
 
 double HyperThreads_QueueTestReplicated(int useHyperThread) {
@@ -385,13 +558,23 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     void *_start_routine;
     long i;
 
-    if(useSectionQueue){
-        sectionQueue = SectionQueue_Init();
-        _start_routine = &TestSectionQueue_Consumer;
-    }else {
-        simpleQueue = SimpleQueue_Init();
-        _start_routine = &TestSimpleQueue_Consumer;
+    switch (queueType) {
+        case simpleQueueType:
+            simpleQueue = SimpleQueue_Init();
+            _start_routine = &TestSimpleQueue_Consumer;
+            break;
+
+        case sectionQueueType:
+            sectionQueue = SectionQueue_Init();
+            _start_routine = &TestSectionQueue_Consumer;
+            break;
+
+        case lynxqQueueType:
+            lynxQ1 = queue_init(LYNXQ_QUEUE_SIZE);
+            _start_routine = &TestLynxQueue_Consumer;
+            break;
     }
+
     numThreads = 2;
 
     // random values
@@ -412,7 +595,18 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
         exit(1);
     }
 
-    useSectionQueue? TestSectionQueue_Producer(0) : TestSimpleQueue_Producer(0);
+    switch (queueType){
+        case simpleQueueType:
+            TestSimpleQueue_Producer(0);
+            break;
+        case sectionQueueType:
+            TestSectionQueue_Producer(0);
+            break;
+        case lynxqQueueType:
+            TestLynxQueue_Producer(0);
+            break;
+    }
+
 
     // Waits for the THREAD_UTILS_NUM_THREADS other threads
     for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
@@ -424,6 +618,8 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     g_timer_destroy(timer);
 
     THREAD_UTILS_DestroyThreads();
+    if(lynxQ1)
+        free(lynxQ1);
 
     printf("Total number of seconds %f\n", seconds_elapsed);
     return seconds_elapsed;
@@ -431,24 +627,24 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
 
 void HyperThreads_QueueTest(ExecMode execMode){
     int i = 0, n = 5;
-    double result = 0;
+    double mean = 0;
 
     for (; i < n; i++) {
         switch (execMode) {
             case notReplicated:
-                result += HyperThreads_QueueTestNotReplicated();
+                mean += HyperThreads_QueueTestNotReplicated();
                 break;
             case replicatedSameThread:
-                result += HyperThreads_SameThreadReplicated();
+                mean += HyperThreads_SameThreadReplicated();
                 break;
             case replicatedThreadsOptimally:
-                result += HyperThreads_QueueTestReplicatedOptimally();
+                mean += HyperThreads_QueueTestReplicatedOptimally();
                 break;
             case replicatedThreads:
-                result += HyperThreads_QueueTestReplicated(0);
+                mean += HyperThreads_QueueTestReplicated(0);
                 break;
             case replicatedHT:
-                result += HyperThreads_QueueTestReplicated(1);
+                mean += HyperThreads_QueueTestReplicated(1);
                 break;
         }
     }
@@ -465,23 +661,31 @@ void HyperThreads_QueueTest(ExecMode execMode){
             break;
         case replicatedThreads:
             printf("\n---------- Replicated With Threads %s %s: ",
-                   checkEveryTime? "checking every time" : "check improved",
-                   useSectionQueue? "using section queue" : "using simple queue");
+                   checkFrequency == everyTime? "checking every time" :
+                   checkFrequency == eachModuloTimes? "each modulo times" :
+                    "each module times with encoding",
+                   queueType == sectionQueueType? "using section queue" :
+                   queueType == simpleQueueType? "using simple queue" :
+                   "using lynxq queue");
             break;
         case replicatedHT:
             printf("\n----------Replicated With Hyper-Threading %s %s: ",
-                   checkEveryTime? "checking every time" : "check improved",
-                   useSectionQueue? "using section queue" : "using simple queue");
+                   checkFrequency == everyTime? "checking every time" :
+                   checkFrequency == eachModuloTimes? "each modulo times" :
+                   "each module times with encoding",
+                   queueType == sectionQueueType? "using section queue" :
+                   queueType == simpleQueueType? "using simple queue" :
+                   "using lynxq queue");
             break;
     }
 
-    printf("%f \n\n", result / 5);
+    printf("%f \n\n", mean / n);
 
 }
 
-void HyperThreads_UseSectionQueueType(bool sectionQueue){
-    useSectionQueue = sectionQueue;
+void HyperThreads_SetQueueType(QueueType newQueueType){
+    queueType = newQueueType;
 }
-void HyperThreads_CheckEveryTime(bool checkingEveryTime){
-    checkEveryTime = checkingEveryTime;
+void HyperThreads_SetCheckFrequency(CheckFrequency newCheckFrequency){
+    checkFrequency = newCheckFrequency;
 }
