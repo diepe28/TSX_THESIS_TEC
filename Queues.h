@@ -11,8 +11,8 @@
 
 #define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
 
-#define SECTION_SIZE 10000
-#define NUM_SECTIONS 3
+#define SECTION_SIZE 20000
+#define NUM_SECTIONS 4
 
 extern long producerCount;
 extern long consumerCount;
@@ -22,7 +22,7 @@ typedef enum{
     replicatedSameThread,
     replicatedThreadsOptimally,
     replicatedThreads,
-    replicatedHT,
+    replicatedHyperThreads,
 }ExecMode;
 
 typedef struct{

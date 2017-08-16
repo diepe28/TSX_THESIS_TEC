@@ -76,7 +76,7 @@ SimpleQueue simpleQueue;
 lynxQ_t lynxQ1;
 
 CheckFrequency checkFrequency = everyTime;
-QueueType queueType = simpleQueueType;
+QueueType queueType = QueueType_Simple;
 
 long CalcFunction(int index, long value){
     return index % 2 ?
@@ -189,7 +189,7 @@ double HyperThreads_SameThreadReplicated(){
     gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
     g_timer_destroy(timer);
 
-    printf("Total Result: %ld --- number of seconds %f, \n", producerResult, seconds_elapsed);
+    printf("Total Result: %ld --- number of seconds %f \n", producerResult, seconds_elapsed);
     return seconds_elapsed;
 }
 
@@ -210,11 +210,12 @@ double HyperThreads_QueueTestNotReplicated() {
     gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
     g_timer_destroy(timer);
 
-    printf("Total Result: %ld --- number of seconds %f, \n", producerResult, seconds_elapsed);
+    printf("Total Result: %ld --- number of seconds %f \n", producerResult, seconds_elapsed);
     return seconds_elapsed;
 }
 
-#define MODULO 5
+/// The next 3 pairs of methods are the same except the queue they use. It could have been a generic method that makes
+/// the choice of which queue to use but that would be more complex and probably add ifs and elses..
 
 ///// Lynx Queue /////
 
@@ -568,17 +569,17 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     consumerCount = producerCount = 0;
 
     switch (queueType) {
-        case simpleQueueType:
+        case QueueType_Simple:
             simpleQueue = SimpleQueue_Init();
             _start_routine = &TestSimpleQueue_Consumer;
             break;
 
-        case sectionQueueType:
+        case QueueType_Section:
             sectionQueue = SectionQueue_Init();
             _start_routine = &TestSectionQueue_Consumer;
             break;
 
-        case lynxqQueueType:
+        case QueueType_lynxq:
             lynxQ1 = queue_init(LYNXQ_QUEUE_SIZE);
             _start_routine = &TestLynxQueue_Consumer;
             break;
@@ -600,13 +601,13 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     }
 
     switch (queueType){
-        case simpleQueueType:
+        case QueueType_Simple:
             TestSimpleQueue_Producer(0);
             break;
-        case sectionQueueType:
+        case QueueType_Section:
             TestSectionQueue_Producer(0);
             break;
-        case lynxqQueueType:
+        case QueueType_lynxq:
             TestLynxQueue_Producer(0);
             break;
     }
@@ -633,6 +634,8 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
 void HyperThreads_QueueTest(ExecMode execMode){
     int i = 0, n = 5;
     double mean = 0;
+    char queueTypeStr[30];
+    char checkFrequencyStr[50];
 
     if(!areValuesCalculated) {
         // random values
@@ -656,10 +659,34 @@ void HyperThreads_QueueTest(ExecMode execMode){
             case replicatedThreads:
                 mean += HyperThreads_QueueTestReplicated(0);
                 break;
-            case replicatedHT:
+            case replicatedHyperThreads:
                 mean += HyperThreads_QueueTestReplicated(1);
                 break;
         }
+    }
+
+    switch (queueType){
+        case QueueType_Simple :
+            strcpy(queueTypeStr, "using SIMPLE queue,");
+            break;
+        case QueueType_Section :
+            strcpy(queueTypeStr, "using SECTION queue");
+            break;
+        case QueueType_lynxq :
+            strcpy(queueTypeStr, "using LYNXQ queue");
+            break;
+    }
+
+    switch (checkFrequency){
+        case everyTime:
+            sprintf(checkFrequencyStr, "checking everytime");
+            break;
+        case eachModuloTimes:
+            sprintf(checkFrequencyStr, "checking every %d times", MODULO);
+            break;
+        case eachModuloTimes_Encoding:
+            sprintf(checkFrequencyStr, "checking every %d times with encoding", MODULO);
+            break;
     }
 
     switch (execMode) {
@@ -673,25 +700,14 @@ void HyperThreads_QueueTest(ExecMode execMode){
             printf("\n---------- Replicated With Threads Optimally: ");
             break;
         case replicatedThreads:
-            printf("\n---------- Replicated With Threads %s %s: ",
-                   checkFrequency == everyTime? "checking every time" :
-                   checkFrequency == eachModuloTimes? "each modulo times" :
-                    "each module times with encoding",
-                   queueType == sectionQueueType? "using section queue" :
-                   queueType == simpleQueueType? "using simple queue" :
-                   "using lynxq queue");
+            printf("\n---------- Replicated With Threads %s %s: ", queueTypeStr, checkFrequencyStr);
             break;
-        case replicatedHT:
-            printf("\n----------Replicated With Hyper-Threading %s %s: ",
-                   checkFrequency == everyTime? "checking every time" :
-                   checkFrequency == eachModuloTimes? "each modulo times" :
-                   "each module times with encoding",
-                   queueType == sectionQueueType? "using section queue" :
-                   queueType == simpleQueueType? "using simple queue" :
-                   "using lynxq queue");
+        case replicatedHyperThreads:
+            printf("\n---------- Replicated With Hyper-Threads %s %s: ", queueTypeStr, checkFrequencyStr);
             break;
     }
 
+    // add standard deviation at least
     printf("%f \n\n", mean / n);
 
 }
@@ -701,4 +717,48 @@ void HyperThreads_SetQueueType(QueueType newQueueType){
 }
 void HyperThreads_SetCheckFrequency(CheckFrequency newCheckFrequency){
     checkFrequency = newCheckFrequency;
+}
+
+void HyperThreads_TestAllCombinations(){
+    // Heuristics
+    HyperThreads_QueueTest(notReplicated);
+    HyperThreads_QueueTest(replicatedSameThread);
+    HyperThreads_QueueTest(replicatedThreadsOptimally);
+
+    printf("\n --- Simple Queue Size: %d ---\n\n", SIMPLE_QUEUE_MAX_ELEMENTS);
+
+    // Every Time, Simple Queue
+    HyperThreads_SetCheckFrequency(everyTime);
+    HyperThreads_SetQueueType(QueueType_Simple);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHyperThreads);
+
+    // Every Module Times, Simple Queue
+    HyperThreads_SetCheckFrequency(eachModuloTimes);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHyperThreads);
+
+    // Every Modules Times With Encoding, Simple Queue
+    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHyperThreads);
+
+    //////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////
+    printf("\n --- Section Queue Info: NumSections: %d  SectionSize: %d ---\n\n", NUM_SECTIONS, SECTION_SIZE);
+    // Every Time, Section Queue
+    HyperThreads_SetCheckFrequency(everyTime);
+    HyperThreads_SetQueueType(QueueType_Section);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHyperThreads);
+
+    // Every Module Times, Section Queue
+    HyperThreads_SetCheckFrequency(eachModuloTimes);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHyperThreads);
+
+    // Every Modules Times With Encoding, Section Queue
+    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
+    HyperThreads_QueueTest(replicatedThreads);
+    HyperThreads_QueueTest(replicatedHyperThreads);
 }

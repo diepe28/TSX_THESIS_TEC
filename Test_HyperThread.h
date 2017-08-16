@@ -10,6 +10,8 @@
 #include "Queues.h"
 #include <glib.h>
 
+#define MODULO 5
+
 typedef enum {
     everyTime,
     eachModuloTimes,
@@ -17,14 +19,15 @@ typedef enum {
 }CheckFrequency;
 
 typedef enum {
-    simpleQueueType,
-    sectionQueueType,
-    lynxqQueueType
+    QueueType_Simple,
+    QueueType_Section,
+    QueueType_lynxq
 }QueueType;
 
 void HyperThreads_PingPongTest(int useHyperThread);
 void HyperThreads_QueueTest(ExecMode execMode);
 void HyperThreads_SetQueueType(QueueType);
 void HyperThreads_SetCheckFrequency(CheckFrequency);
+void HyperThreads_TestAllCombinations();
 
 #endif //TSXPROJECT_TEST_HYPERTHREAD_H
