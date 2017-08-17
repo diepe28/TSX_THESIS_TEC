@@ -39,18 +39,6 @@ int main(int argc, char **argv){
 //    value = v1 ^ v2 ^ v3 ^ v4 ^ v5;
 //    printf("Binary: %s\n", byte_to_binary(value));
 
-    // Heuristics
-//    HyperThreads_QueueTest(notReplicated);
-//    HyperThreads_QueueTest(replicatedSameThread);
-//    HyperThreads_QueueTest(replicatedThreadsOptimally);
-//
-//    // Every Time Simple Queue
-//    HyperThreads_SetCheckFrequency(everyTime);
-//    HyperThreads_SetQueueType(QueueType_Simple);
-//
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHT);
-
     HyperThreads_TestAllCombinations();
 
     return 0;

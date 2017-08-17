@@ -11,7 +11,7 @@
 
 #define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
 
-#define SECTION_SIZE 20000
+#define SECTION_SIZE 1000
 #define NUM_SECTIONS 4
 
 extern long producerCount;
@@ -47,7 +47,7 @@ long SectionQueue_Dequeue(SectionQueue* this);
 void SectionQueue_WastedInst();
 
 /////////////// Simple Queue
-#define SIMPLE_QUEUE_MAX_ELEMENTS 100000
+#define SIMPLE_QUEUE_MAX_ELEMENTS 10000
 
 typedef struct{
     long content[SIMPLE_QUEUE_MAX_ELEMENTS];

@@ -47,6 +47,9 @@ int cur_queues_num;
 /* this array contains the queue that the program uses. */
 lynxQ_t all_queues_created[TOTAL_NUM_QUEUES];
 
+long lynxProducerCount;
+long lynxConsumerCount;
+
 enum section_state {
     /* Boiler plate */
             __STATE_UNINIT = 0,
@@ -163,6 +166,7 @@ do { perror(msg); exit(EXIT_FAILURE); } while (0)
     	: "1" );							\
     push_index = (char *)((uint64_t)push_index + sizeof(TYPE));		\
     queue->push_index = push_index;					\
+    lynxProducerCount++;					\
   }
 
 #define DEFINE_POP(TYPE, MOV)						\
@@ -177,6 +181,7 @@ do { perror(msg); exit(EXIT_FAILURE); } while (0)
     	: "1" );							\
     pop_index += sizeof(TYPE);						\
     queue->pop_index = pop_index;					\
+    lynxConsumerCount++;					\
     return data;							\
   }
 
@@ -802,10 +807,19 @@ static void queue_finalize(lynxQ_t queue) {
     queue->time_end = clock();
     /* Timer for the second thread */
     queue->queue_time = (double)(queue->time_end - queue->time_begin) / (2 * CLOCKS_PER_SEC);
+
+    // added by dperez
+    all_queues_created[0] = NULL;
+    cur_queues_num--;
 }
 
 static double queue_get_time(lynxQ_t queue) {
     return queue->queue_time;
+}
+
+static void lynx_queue_print_numbers(){
+    printf("Producer count: %ld, consumer count: %ld\n", lynxProducerCount, lynxProducerCount);
+    lynxProducerCount = lynxConsumerCount = 0;
 }
 
 #endif

@@ -23,7 +23,8 @@ SectionQueue SectionQueue_Init(){
     return this;
 }
 
-void SectionQueue_Enqueue(SectionQueue* this, long value){
+
+void inline SectionQueue_Enqueue(SectionQueue* this, long value){
     //printf("Producer thread section: %d, index: %d, isReadMode: %d \n", enqueueSection, sectionIndex, this->sections[enqueueSection].isReadMode);
     while(this->sections[this->enqueueSection].isReadMode); // producerWasted++;
 
@@ -34,10 +35,10 @@ void SectionQueue_Enqueue(SectionQueue* this, long value){
         this->sections[this->enqueueSection].isReadMode = 1;
         this->enqueueSection = (this->enqueueSection + 1) % NUM_SECTIONS;
     }
-    //producerCount++; // to avoid weird behaviour due optimization
+    producerCount++; // to avoid weird behavior due optimization
 }
 
-long SectionQueue_Dequeue(SectionQueue* this){
+long inline SectionQueue_Dequeue(SectionQueue* this){
     long value;
 
     //printf("Consumer thread section: %d, index: %d, isReadMode: %d \n", dequeueSection, sectionIndex, this->sections[dequeueSection].isReadMode);
@@ -50,7 +51,7 @@ long SectionQueue_Dequeue(SectionQueue* this){
         this->sections[this->dequeueSection].isReadMode = 0;
         this->dequeueSection = (this->dequeueSection + 1) % NUM_SECTIONS;
     }
-    //consumerCount++; // to avoid weird behaviour due optimization
+    consumerCount++; // to avoid weird behavior due optimization
     return value;
 }
 
@@ -66,20 +67,20 @@ SimpleQueue SimpleQueue_Init(){
     this.enqPtr = this.deqPtr = 0;
     return this;
 }
-void SimpleQueue_Enqueue(SimpleQueue* this, long value){
+void inline SimpleQueue_Enqueue(SimpleQueue* this, long value){
     //printf("Producer enqPtr: %d\n", this->enqPtr);
     int nextEnqPtr = (this->enqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
     while(nextEnqPtr == this->deqPtr);
     this->content[this->enqPtr] = value;
     this->enqPtr = nextEnqPtr;
-    //producerCount++; // to avoid weird behaviour due optimization
+    producerCount++; // to avoid weird behavior due optimization
 }
 
-long SimpleQueue_Dequeue(SimpleQueue* this){
+long inline SimpleQueue_Dequeue(SimpleQueue* this){
     //printf("Consumer deqPtr: %d\n", this->deqPtr);
     while(this->deqPtr == this->enqPtr);
     long value = this->content[this->deqPtr];
     this->deqPtr = (this->deqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
-    //consumerCount++; // to avoid weird behaviour due optimization
+    consumerCount++; // to avoid weird behavior due optimization
     return value;
 }
