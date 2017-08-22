@@ -25,6 +25,17 @@ const char *byte_to_binary(int x)
     return b;
 }
 
+void printMatrix(int rows, int cols, long matrix[rows][cols]){
+    int i,j;
+    for(i = 0; i < rows; i++){
+        for(j = 0; j < cols; j++){
+            printf("%ld ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
 int main(int argc, char **argv){
     srand(time(NULL));
     int numExecutions =  atoi(argv[1]);
@@ -39,7 +50,9 @@ int main(int argc, char **argv){
 //    value = v1 ^ v2 ^ v3 ^ v4 ^ v5;
 //    printf("Binary: %s\n", byte_to_binary(value));
 
-    HyperThreads_TestAllCombinations();
+    //HyperThreads_TestAllCombinations();
+
+    Vector_Matrix_Mult();
 
     return 0;
 }

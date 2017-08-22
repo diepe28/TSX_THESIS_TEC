@@ -166,8 +166,9 @@ do { perror(msg); exit(EXIT_FAILURE); } while (0)
     	: "1" );							\
     push_index = (char *)((uint64_t)push_index + sizeof(TYPE));		\
     queue->push_index = push_index;					\
-    lynxProducerCount++;					\
   }
+  
+  //    lynxProducerCount++;					\//added by dperez
 
 #define DEFINE_POP(TYPE, MOV)						\
   inline TYPE								\
@@ -181,9 +182,10 @@ do { perror(msg); exit(EXIT_FAILURE); } while (0)
     	: "1" );							\
     pop_index += sizeof(TYPE);						\
     queue->pop_index = pop_index;					\
-    lynxConsumerCount++;					\
     return data;							\
   }
+
+//    lynxConsumerCount++;					\//added by dperez
 
 DEFINE_PUSH(char, "movb")
 DEFINE_PUSH(uint8_t, "movb")

@@ -75,7 +75,7 @@ SectionQueue sectionQueue;
 SimpleQueue simpleQueue;
 lynxQ_t lynxQ1;
 
-CheckFrequency checkFrequency = everyTime;
+CheckFrequency checkFrequency = CheckFrequency_everyTime;
 QueueType queueType = QueueType_Simple;
 
 long CalcFunction(long index, long value){
@@ -248,7 +248,7 @@ void TestLynxQueue_Producer(void *arg) {
     SetThreadAffinity(_thread_id);
 
     switch (checkFrequency) {
-        case everyTime:
+        case CheckFrequency_everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
@@ -257,7 +257,7 @@ void TestLynxQueue_Producer(void *arg) {
             queue_push_done(lynxQ1);
             break;
 
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValues[residue] = CalcFunction(i, values[i]);
                 result += auxValues[residue];
@@ -272,7 +272,7 @@ void TestLynxQueue_Producer(void *arg) {
             queue_push_done(lynxQ1);
             break;
 
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
@@ -302,10 +302,10 @@ void TestLynxQueue_Consumer(void *arg){
     queue_busy_wait_pop_ready(lynxQ1);
 
     switch(checkFrequency) {
-        case everyTime:
+        case CheckFrequency_everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
-                otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                //otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
 
                 if (auxValue != otherValue) {
                     printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
@@ -316,13 +316,13 @@ void TestLynxQueue_Consumer(void *arg){
             queue_pop_done(lynxQ1);
             break;
 
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValues[residue] = CalcFunction(i, values[i]);
 
                 if (residue++ == groupLimit) {
                     for (j = 0; j < MODULO; j++) {
-                        otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                        //otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
                         if (auxValues[j] != otherValue) {
                             printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
                             exit(1);
@@ -335,7 +335,7 @@ void TestLynxQueue_Consumer(void *arg){
             }
             break;
 
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
                 xorResultMine ^= auxValue;
@@ -343,7 +343,7 @@ void TestLynxQueue_Consumer(void *arg){
                 result += auxValue;
 
                 if (residue++ == groupLimit) {
-                    xorResultT1 = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                    //xorResultT1 = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
                     if (xorResultT1 != xorResultMine) {
                         printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
                         exit(1);
@@ -368,7 +368,7 @@ void TestSimpleQueue_Producer(void *arg) {
     SetThreadAffinity(_thread_id);
 
     switch (checkFrequency) {
-        case everyTime:
+        case CheckFrequency_everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
@@ -376,7 +376,7 @@ void TestSimpleQueue_Producer(void *arg) {
             }
             break;
 
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValues[residue] = CalcFunction(i, values[i]);
                 result += auxValues[residue];
@@ -390,7 +390,7 @@ void TestSimpleQueue_Producer(void *arg) {
             }
             break;
 
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
@@ -417,7 +417,7 @@ void TestSimpleQueue_Consumer(void *arg){
     SetThreadAffinity(_thread_id);
 
     switch(checkFrequency) {
-        case everyTime:
+        case CheckFrequency_everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
                 otherValue = SimpleQueue_Dequeue(&simpleQueue);
@@ -430,7 +430,7 @@ void TestSimpleQueue_Consumer(void *arg){
             }
             break;
 
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             for (i = 0; i < NUM_VALUES; i++) {
                 modulo = i % MODULO;
                 auxValues[modulo] = CalcFunction(i, values[i]);
@@ -449,7 +449,7 @@ void TestSimpleQueue_Consumer(void *arg){
             }
             break;
 
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
 
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
@@ -482,7 +482,7 @@ void TestSectionQueue_Producer(void *arg) {
     SetThreadAffinity(_thread_id);
 
     switch (checkFrequency) {
-        case everyTime:
+        case CheckFrequency_everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
@@ -490,7 +490,7 @@ void TestSectionQueue_Producer(void *arg) {
             }
             break;
 
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValues[residue] = CalcFunction(i, values[i]);
                 result += auxValues[residue];
@@ -504,7 +504,7 @@ void TestSectionQueue_Producer(void *arg) {
             }
             break;
 
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
             for (i = 0; i < NUM_VALUES; i++) {
                 calcValue = CalcFunction(i, values[i]);
                 result += calcValue;
@@ -531,7 +531,7 @@ void TestSectionQueue_Consumer(void *arg){
     SetThreadAffinity(_thread_id);
 
     switch(checkFrequency) {
-        case everyTime:
+        case CheckFrequency_everyTime:
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
                 otherValue = SectionQueue_Dequeue(&sectionQueue);
@@ -544,7 +544,7 @@ void TestSectionQueue_Consumer(void *arg){
             }
             break;
 
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             for (i = 0; i < NUM_VALUES; i++) {
                 modulo = i % MODULO;
                 auxValues[modulo] = CalcFunction(i, values[i]);
@@ -563,7 +563,7 @@ void TestSectionQueue_Consumer(void *arg){
             }
             break;
 
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
 
             for (i = 0; i < NUM_VALUES; i++) {
                 auxValue = CalcFunction(i, values[i]);
@@ -666,7 +666,7 @@ double HyperThreads_QueueTestReplicated(int useHyperThread) {
     return milliseconds_elapsed;
 }
 
-#define NUM_RUNS 7
+#define NUM_RUNS 5
 
 void HyperThreads_QueueTest(ExecMode execMode){
     int i = 0;
@@ -685,19 +685,19 @@ void HyperThreads_QueueTest(ExecMode execMode){
 
     for (i=0; i < NUM_RUNS; i++) {
         switch (execMode) {
-            case notReplicated:
+            case ExeMode_notReplicated:
                 times[i] += HyperThreads_QueueTestNotReplicated();
                 break;
-            case replicatedSameThread:
+            case ExeMode_replicatedSameThread:
                 times[i] += HyperThreads_SameThreadReplicated();
                 break;
-            case replicatedThreadsOptimally:
+            case ExeMode_replicatedThreadsOptimally:
                 times[i] += HyperThreads_QueueTestReplicatedOptimally();
                 break;
-            case replicatedThreads:
+            case ExeMode_replicatedThreads:
                 times[i] += HyperThreads_QueueTestReplicated(0);
                 break;
-            case replicatedHyperThreads:
+            case ExeMode_replicatedHyperThreads:
                 times[i] += HyperThreads_QueueTestReplicated(1);
                 break;
         }
@@ -724,31 +724,31 @@ void HyperThreads_QueueTest(ExecMode execMode){
     }
 
     switch (checkFrequency){
-        case everyTime:
+        case CheckFrequency_everyTime:
             sprintf(checkFrequencyStr, "checking everytime");
             break;
-        case eachModuloTimes:
+        case CheckFrequency_eachModuloTimes:
             sprintf(checkFrequencyStr, "checking every %d times", MODULO);
             break;
-        case eachModuloTimes_Encoding:
+        case CheckFrequency_Encoding:
             sprintf(checkFrequencyStr, "checking every %d times with encoding", MODULO);
             break;
     }
 
     switch (execMode) {
-        case notReplicated:
+        case ExeMode_notReplicated:
             printf("\n---------- Not replicated: ");
             break;
-        case replicatedSameThread:
+        case ExeMode_replicatedSameThread:
             printf("\n---------- Replicated in the same thread: ");
             break;
-        case replicatedThreadsOptimally:
+        case ExeMode_replicatedThreadsOptimally:
             printf("\n---------- Replicated With Threads Optimally: ");
             break;
-        case replicatedThreads:
+        case ExeMode_replicatedThreads:
             printf("\n---------- Replicated With Threads %s %s: ", queueTypeStr, checkFrequencyStr);
             break;
-        case replicatedHyperThreads:
+        case ExeMode_replicatedHyperThreads:
             printf("\n---------- Replicated With Hyper-Threads %s %s: ", queueTypeStr, checkFrequencyStr);
             break;
     }
@@ -766,63 +766,753 @@ void HyperThreads_SetCheckFrequency(CheckFrequency newCheckFrequency){
 
 void HyperThreads_TestAllCombinations(){
     // Heuristics
-//    HyperThreads_QueueTest(notReplicated);
-//    HyperThreads_QueueTest(replicatedSameThread);
-//    HyperThreads_QueueTest(replicatedThreadsOptimally);
+//    HyperThreads_QueueTest(ExeMode_notReplicated);
+//    HyperThreads_QueueTest(ExeMode_replicatedSameThread);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreadsOptimally);
 //
 //    printf("\n --- Simple Queue Size: %d ---\n\n", SIMPLE_QUEUE_MAX_ELEMENTS);
 //
 //    // Every Time, Simple Queue
-//    HyperThreads_SetCheckFrequency(everyTime);
+//    HyperThreads_SetCheckFrequency(CheckFrequency_everyTime);
 //    HyperThreads_SetQueueType(QueueType_Simple);
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHyperThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 //
 //    // Every Module Times, Simple Queue
-//    HyperThreads_SetCheckFrequency(eachModuloTimes);
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHyperThreads);
+//    HyperThreads_SetCheckFrequency(CheckFrequency_eachModuloTimes);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 //
 //    // Every Modules Times With Encoding, Simple Queue
-//    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHyperThreads);
+//    HyperThreads_SetCheckFrequency(CheckFrequency_Encoding);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 //
 //    //////////////////////////////////////////////////////////
 //    //////////////////////////////////////////////////////////
 //    printf("\n --- Section Queue Info: NumSections: %d  SectionSize: %d ---\n\n", NUM_SECTIONS, SECTION_SIZE);
 //    // Every Time, Section Queue
-//    HyperThreads_SetCheckFrequency(everyTime);
+//    HyperThreads_SetCheckFrequency(CheckFrequency_everyTime);
 //    HyperThreads_SetQueueType(QueueType_Section);
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHyperThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 //
 //    // Every Module Times, Section Queue
-//    HyperThreads_SetCheckFrequency(eachModuloTimes);
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHyperThreads);
+//    HyperThreads_SetCheckFrequency(CheckFrequency_eachModuloTimes);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 //
 //    // Every Modules Times With Encoding, Section Queue
-//    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
-//    HyperThreads_QueueTest(replicatedThreads);
-//    HyperThreads_QueueTest(replicatedHyperThreads);
+//    HyperThreads_SetCheckFrequency(CheckFrequency_Encoding);
+//    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 
     ////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////
     printf("\n --- LYNX Queue --- \n");
     // Every Time, lynx Queue
-    HyperThreads_SetCheckFrequency(everyTime);
+    HyperThreads_SetCheckFrequency(CheckFrequency_everyTime);
     HyperThreads_SetQueueType(QueueType_lynxq);
-    HyperThreads_QueueTest(replicatedThreads);
-    HyperThreads_QueueTest(replicatedHyperThreads);
+    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 
     // Every Module Times, lynx Queue
-    HyperThreads_SetCheckFrequency(eachModuloTimes);
-    HyperThreads_QueueTest(replicatedThreads);
-    HyperThreads_QueueTest(replicatedHyperThreads);
+    HyperThreads_SetCheckFrequency(CheckFrequency_eachModuloTimes);
+    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 
     // Every Modules Times With Encoding, lynx Queue
-    HyperThreads_SetCheckFrequency(eachModuloTimes_Encoding);
-    HyperThreads_QueueTest(replicatedThreads);
-    HyperThreads_QueueTest(replicatedHyperThreads);
+    HyperThreads_SetCheckFrequency(CheckFrequency_Encoding);
+    HyperThreads_QueueTest(ExeMode_replicatedThreads);
+    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#define MATRIX_COLS 40000
+#define MATRIX_ROWS 40000
+
+int vector[MATRIX_COLS];
+long producerVectorResult[MATRIX_ROWS];
+long consumerVectorResult[MATRIX_ROWS];
+int **matrix;
+
+long multiply(int a, int b){
+    return a * b;
+}
+
+void Vector_Matrix_NotReplicated(){
+    int i, j;
+
+    for(i = 0; i < MATRIX_ROWS; i++){
+        producerVectorResult[i] = 0;
+        for(j = 0; j < MATRIX_COLS; j++){
+            producerVectorResult[i] += vector[j] * matrix[i][j];
+        }
+    }
+}
+
+void Vector_Matrix_ReplicatedSameThread(){
+    int i, j;
+    long v1, v2;
+
+    for(i = 0; i < MATRIX_ROWS; i++){
+        producerVectorResult[i] = 0;
+        for(j = 0; j < MATRIX_COLS; j++){
+            v1 = vector[j] * matrix[i][j];
+            v2 = multiply(matrix[i][j],vector[j]);
+            if(v1 == v2){
+                producerVectorResult[i] += v1;
+            }else{
+                printf("Soft error encountered!!!!\n\n");
+                exit(1);
+            }
+        }
+    }
+}
+
+// Simple Queue
+
+void Vector_Matrix_SimpleQueue_Producer(void* arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, thisValue, thisXOR = 0;
+    long thisValues[MODULO];
+    int j,k, modulo = 0, groupLimit = MODULO -1;
+
+    SetThreadAffinity(_thread_id);
+
+    switch (checkFrequency) {
+        case CheckFrequency_everyTime:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    producerVectorResult[i] += thisValue;
+                    SimpleQueue_Enqueue(&simpleQueue, thisValue);
+                }
+            }
+            break;
+
+        case CheckFrequency_eachModuloTimes:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValues[modulo] = vector[j] * matrix[i][j];
+
+                    if(modulo++ == groupLimit){
+                        for(k = 0; k < MODULO; k++) {
+                            SimpleQueue_Enqueue(&simpleQueue, thisValues[k]);
+                            producerVectorResult[i] += thisValues[k];
+                        }
+                        modulo = 0;
+                    }
+                }
+            }
+            break;
+
+        case CheckFrequency_Encoding:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(modulo++ == groupLimit) {
+                        SimpleQueue_Enqueue(&simpleQueue, thisXOR);
+                        modulo = 0;
+                    }
+                    producerVectorResult[i] += thisValue;
+                }
+            }
+            break;
+    }
+}
+
+void Vector_Matrix_SimpleQueue_Consumer(void *arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, thisValue, otherValue, modulo = 0, j, k;
+    long thisValues[MODULO], otherXOR = 0, thisXOR = 0;
+    int groupLimit = MODULO -1;
+
+    SetThreadAffinity(_thread_id);
+
+    switch(checkFrequency) {
+        case CheckFrequency_everyTime:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    otherValue = SimpleQueue_Dequeue(&simpleQueue);
+
+                    if(thisValue != otherValue){
+                        printf("\n\n SOFT ERROR DETECTED \n\n");
+                        exit(0);
+                    }
+
+                    consumerVectorResult[i] += thisValue;
+                }
+            }
+            break;
+
+        case CheckFrequency_eachModuloTimes:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValues[modulo] = vector[j] * matrix[i][j];
+
+                    if(modulo++ == groupLimit){
+                        for(k = 0; k < MODULO; k++) {
+                            otherValue = SimpleQueue_Dequeue(&simpleQueue);
+                            if(thisValues[k] != otherValue){
+                                printf("\n\n SOFT ERROR DETECTED \n\n");
+                                exit(0);
+                            }
+                            consumerVectorResult[i] += otherValue;
+                        }
+                        modulo = 0;
+                    }
+                }
+            }
+            break;
+
+        case CheckFrequency_Encoding:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(modulo++ == groupLimit) {
+                        otherXOR = SimpleQueue_Dequeue(&simpleQueue);
+                        if(thisXOR != otherXOR){
+                            printf("\n\n SOFT ERROR DETECTED \n\n");
+                            exit(0);
+                        }
+                        modulo = 0;
+                    }
+                    consumerVectorResult[i] += thisValue;
+                }
+            }
+            break;
+    }
+
+}
+
+// Section Queue
+
+void Vector_Matrix_SectionQueue_Producer(void* arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, thisValue, thisXOR = 0;
+    long thisValues[MODULO];
+    int j,k, modulo = 0, groupLimit = MODULO -1;
+
+    SetThreadAffinity(_thread_id);
+
+    switch (checkFrequency) {
+        case CheckFrequency_everyTime:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    producerVectorResult[i] += thisValue;
+                    SectionQueue_Enqueue(&sectionQueue, thisValue);
+                }
+            }
+            break;
+
+        case CheckFrequency_eachModuloTimes:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValues[modulo] = vector[j] * matrix[i][j];
+
+                    if(modulo++ == groupLimit){
+                        for(k = 0; k < MODULO; k++) {
+                            SectionQueue_Enqueue(&sectionQueue, thisValues[k]);
+                            producerVectorResult[i] += thisValues[k];
+                        }
+                        modulo = 0;
+                    }
+                }
+            }
+            break;
+
+        case CheckFrequency_Encoding:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(modulo++ == groupLimit) {
+                        SectionQueue_Enqueue(&sectionQueue, thisXOR);
+                        modulo = 0;
+                    }
+                    producerVectorResult[i] += thisValue;
+                }
+            }
+            break;
+    }
+}
+
+void Vector_Matrix_SectionQueue_Consumer(void *arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, thisValue, otherValue, modulo = 0, j, k;
+    long thisValues[MODULO], otherXOR = 0, thisXOR = 0;
+    int groupLimit = MODULO -1;
+
+    SetThreadAffinity(_thread_id);
+
+    switch(checkFrequency) {
+        case CheckFrequency_everyTime:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    otherValue = SectionQueue_Dequeue(&sectionQueue);
+
+                    if(thisValue != otherValue){
+                        printf("\n\n SOFT ERROR DETECTED \n\n");
+                        exit(0);
+                    }
+
+                    consumerVectorResult[i] += thisValue;
+                }
+            }
+            break;
+
+        case CheckFrequency_eachModuloTimes:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValues[modulo] = vector[j] * matrix[i][j];
+
+                    if(modulo++ == groupLimit){
+                        for(k = 0; k < MODULO; k++) {
+                            otherValue = SectionQueue_Dequeue(&sectionQueue);
+                            if(thisValues[k] != otherValue){
+                                printf("\n\n SOFT ERROR DETECTED \n\n");
+                                exit(0);
+                            }
+                            consumerVectorResult[i] += otherValue;
+                        }
+                        modulo = 0;
+                    }
+                }
+            }
+            break;
+
+        case CheckFrequency_Encoding:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(modulo++ == groupLimit) {
+                        otherXOR = SectionQueue_Dequeue(&sectionQueue);
+                        if(thisXOR != otherXOR){
+                            printf("\n\n SOFT ERROR DETECTED \n\n");
+                            exit(0);
+                        }
+                        modulo = 0;
+                    }
+                    consumerVectorResult[i] += thisValue;
+                }
+            }
+            break;
+    }
+
+}
+
+// Lynx Queue
+
+void Vector_Matrix_LynxQueue_Producer(void* arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, thisValue, thisXOR = 0;
+    long thisValues[MODULO];
+    int j,k, modulo = 0, groupLimit = MODULO -1;
+
+    SetThreadAffinity(_thread_id);
+
+    switch (checkFrequency) {
+        case CheckFrequency_everyTime:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    producerVectorResult[i] += thisValue;
+                    queue_push_long(lynxQ1, thisValue);
+                }
+            }
+            queue_push_done(lynxQ1);
+            break;
+
+        case CheckFrequency_eachModuloTimes:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValues[modulo] = vector[j] * matrix[i][j];
+
+                    if(modulo++ == groupLimit){
+                        for(k = 0; k < MODULO; k++) {
+                            queue_push_long(lynxQ1, thisValues[k]);
+                            producerVectorResult[i] += thisValues[k];
+                        }
+                        modulo = 0;
+                    }
+                }
+            }
+            queue_push_done(lynxQ1);
+            break;
+
+        case CheckFrequency_Encoding:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                producerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(modulo++ == groupLimit) {
+                        queue_push_long(lynxQ1, thisXOR);
+                        modulo = 0;
+                    }
+                    producerVectorResult[i] += thisValue;
+                }
+            }
+            queue_push_done(lynxQ1);
+            break;
+    }
+}
+
+void Vector_Matrix_LynxQueue_Consumer(void *arg){
+    _thread_id = (int) (int64_t) arg;
+    long i = 0, thisValue, otherValue, modulo = 0, j, k;
+    long thisValues[MODULO], otherXOR = 0, thisXOR = 0;
+    int groupLimit = MODULO -1;
+
+    SetThreadAffinity(_thread_id);
+
+    /* Busy wait until pop thread is ready to start */
+    queue_busy_wait_pop_ready(lynxQ1);
+
+    switch(checkFrequency) {
+        case CheckFrequency_everyTime:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+
+                    if(thisValue != otherValue){
+                        printf("\n\n SOFT ERROR DETECTED \n\n");
+                        exit(0);
+                    }
+
+                    consumerVectorResult[i] += thisValue;
+                }
+            }
+            queue_pop_done(lynxQ1);
+            break;
+
+        case CheckFrequency_eachModuloTimes:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValues[modulo] = vector[j] * matrix[i][j];
+
+                    if(modulo++ == groupLimit){
+                        for(k = 0; k < MODULO; k++) {
+                            otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                            if(thisValues[k] != otherValue){
+                                printf("\n\n SOFT ERROR DETECTED \n\n");
+                                exit(0);
+                            }
+                            consumerVectorResult[i] += otherValue;
+                        }
+                        modulo = 0;
+                    }
+                }
+            }
+            queue_pop_done(lynxQ1);
+            break;
+
+        case CheckFrequency_Encoding:
+            for(i = 0; i < MATRIX_ROWS; i++){
+                consumerVectorResult[i] = 0;
+                for(j = 0; j < MATRIX_COLS; j++){
+                    thisValue = vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(modulo++ == groupLimit) {
+                        otherXOR = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                        if(thisXOR != otherXOR){
+                            printf("\n\n SOFT ERROR DETECTED \n\n");
+                            exit(0);
+                        }
+                        modulo = 0;
+                    }
+                    consumerVectorResult[i] += thisValue;
+                }
+            }
+            queue_pop_done(lynxQ1);
+            break;
+    }
+}
+
+void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
+    int err, numThreads;
+    void *_start_routine;
+    long i = 0;
+
+    consumerCount = producerCount = 0;
+
+    switch (queueType) {
+        case QueueType_Simple:
+            simpleQueue = SimpleQueue_Init();
+            _start_routine = &Vector_Matrix_SimpleQueue_Consumer;
+            break;
+
+        case QueueType_Section:
+            sectionQueue = SectionQueue_Init();
+            _start_routine = &Vector_Matrix_SectionQueue_Consumer;
+            break;
+
+        case QueueType_lynxq:
+            lynxQ1 = queue_init(LYNXQ_QUEUE_SIZE);
+            _start_routine = &Vector_Matrix_LynxQueue_Consumer;
+            break;
+    }
+
+    numThreads = 2;
+
+    THREAD_UTILS_SetNumThreads(numThreads);
+    THREAD_UTILS_CreateThreads();
+
+    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
+
+    if (err) {
+        fprintf(stderr, "Failed to create thread %d\n", 1);
+        exit(1);
+    }
+
+    switch (queueType) {
+        case QueueType_Simple:
+            Vector_Matrix_SimpleQueue_Producer(0);
+            break;
+        case QueueType_Section:
+            Vector_Matrix_SectionQueue_Producer(0);
+            break;
+        case QueueType_lynxq:
+            Vector_Matrix_LynxQueue_Producer(0);
+            break;
+    }
+
+    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+
+    THREAD_UTILS_DestroyThreads();
+    if (lynxQ1) {
+        //lynx_queue_print_numbers();
+        queue_finalize(lynxQ1);
+        free(lynxQ1);
+        lynxQ1 = NULL;
+    }
+}
+
+void Vector_Matrix_Init(){
+    int i, j;
+    matrix = (int**) (malloc(sizeof(int*) * MATRIX_ROWS));
+
+    for(i = 0; i < MATRIX_ROWS; i++){
+        matrix[i] = (int*) (malloc(sizeof(int) * MATRIX_COLS));
+    }
+
+    for(i = 0; i < MATRIX_COLS; i++){
+        vector[i] = rand() % 100;
+        if(i % 2)
+            vector[i] *= -1;
+    }
+
+    for(i = 0; i < MATRIX_ROWS; i++){
+        for(j = 0; j < MATRIX_COLS; j++){
+            matrix[i][j] = rand() % 100;
+            if(i % 2)
+                matrix[i][j] *= -1;
+        }
+    }
+}
+
+void Vector_Matrix_MultAux(ExecMode executionMode) {
+    int i, j, n;
+    double times[NUM_RUNS], mean = 0, sd;
+    long long matrixSum = 0;
+    GTimer *timer;
+    gulong fractional_part;
+    gdouble milliseconds_elapsed;
+    char queueTypeStr[30];
+    char checkFrequencyStr[50];
+    char executionModeStr[50];
+
+    for(n = 0; n < NUM_RUNS; n++) {
+        timer = g_timer_new();
+        switch (executionMode) {
+            case ExeMode_notReplicated:
+                Vector_Matrix_NotReplicated();
+                break;
+            case ExeMode_replicatedSameThread:
+                Vector_Matrix_ReplicatedSameThread();
+                break;
+            case ExeMode_replicatedThreads:
+                Vector_Matrix_ReplicatedThreads(0);
+                break;
+            case ExeMode_replicatedHyperThreads:
+                Vector_Matrix_ReplicatedThreads(1);
+                break;
+        }
+
+        g_timer_stop(timer);
+        fractional_part = 0;
+        milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
+        times[n] = milliseconds_elapsed;
+        mean += milliseconds_elapsed;
+        g_timer_destroy(timer);
+
+        matrixSum = 0;
+        if(executionMode == ExeMode_replicatedSameThread || executionMode == ExeMode_replicatedHyperThreads){
+            for(i = 0; i < MATRIX_ROWS; i++){
+                if(producerVectorResult[i] == consumerVectorResult[i])
+                    matrixSum += producerVectorResult[i];
+            }
+        }else {
+            for (i = 0; i < MATRIX_ROWS; i++) {
+                matrixSum += producerVectorResult[i];
+            }
+        }
+
+        printf("Elapsed millisenconds: %f Matrix Sum: %lld\n", milliseconds_elapsed, matrixSum);
+    }
+
+    mean /= NUM_RUNS;
+
+    for (i= 0; i < NUM_RUNS; i++) {
+        sd += fabs(mean - times[i]);
+    }
+
+    sd /= NUM_RUNS;
+
+    switch (queueType){
+        case QueueType_Simple :
+            strcpy(queueTypeStr, "SIMPLE");
+            break;
+        case QueueType_Section :
+            strcpy(queueTypeStr, "SECTION");
+            break;
+        case QueueType_lynxq :
+            strcpy(queueTypeStr, "LYNXQ");
+            break;
+    }
+
+    switch (checkFrequency){
+        case CheckFrequency_everyTime:
+            sprintf(checkFrequencyStr, "checking everytime");
+            break;
+        case CheckFrequency_eachModuloTimes:
+            sprintf(checkFrequencyStr, "checking every %d times", MODULO);
+            break;
+        case CheckFrequency_Encoding:
+            sprintf(checkFrequencyStr, "checking every %d times with encoding", MODULO);
+            break;
+    }
+
+    switch (executionMode) {
+        case ExeMode_notReplicated:
+            sprintf(executionModeStr, "Not replicated");
+            break;
+        case ExeMode_replicatedSameThread:
+            sprintf(executionModeStr, "Replicated in Same Thread");
+            break;
+        case ExeMode_replicatedThreadsOptimally:
+            sprintf(executionModeStr, "Replicated With Threads Optimally");
+            break;
+        case ExeMode_replicatedThreads:
+            sprintf(executionModeStr, "Replicated With Threads");
+            break;
+        case ExeMode_replicatedHyperThreads:
+            sprintf(executionModeStr, "Replicated With Hyper-Threads");
+            break;
+    }
+
+    printf("--- Mean Execution Time of %s with %s queue %s: %f SD: %f\n\n",
+           executionModeStr, queueTypeStr, checkFrequencyStr, mean, sd);
+
+}
+
+void Vector_Matrix_Mult(){
+    int i;
+    Vector_Matrix_Init();
+
+    Vector_Matrix_MultAux(ExeMode_notReplicated);
+    //Vector_Matrix_MultAux(ExeMode_replicatedSameThread);
+
+    // ----------------- SIMPLE QUEUE -----------------
+    printf("--------------- Simple Queue Info, Size: %d \n\n", SIMPLE_QUEUE_MAX_ELEMENTS);
+    HyperThreads_SetQueueType(QueueType_Simple);
+    HyperThreads_SetCheckFrequency(CheckFrequency_everyTime);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    HyperThreads_SetCheckFrequency(CheckFrequency_eachModuloTimes);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    HyperThreads_SetCheckFrequency(CheckFrequency_Encoding);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    // ----------------- SECTION QUEUE -----------------
+    printf("--------------- Section Queue Info, Size Section: %d Number of Sections: %d \n\n", SECTION_SIZE, NUM_SECTIONS );
+    HyperThreads_SetQueueType(QueueType_Section);
+    HyperThreads_SetCheckFrequency(CheckFrequency_everyTime);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    HyperThreads_SetCheckFrequency(CheckFrequency_eachModuloTimes);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    HyperThreads_SetCheckFrequency(CheckFrequency_Encoding);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    // ----------------- LYNXQ QUEUE -----------------
+    HyperThreads_SetQueueType(QueueType_lynxq);
+    HyperThreads_SetCheckFrequency(CheckFrequency_everyTime);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    HyperThreads_SetCheckFrequency(CheckFrequency_eachModuloTimes);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    HyperThreads_SetCheckFrequency(CheckFrequency_Encoding);
+
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    for(i = 0; i < MATRIX_ROWS; i++){
+        free(matrix[i]);
+    }
+
+    free(matrix);
 }

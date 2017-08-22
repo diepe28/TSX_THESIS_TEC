@@ -18,11 +18,11 @@ extern long producerCount;
 extern long consumerCount;
 
 typedef enum{
-    notReplicated,
-    replicatedSameThread,
-    replicatedThreadsOptimally,
-    replicatedThreads,
-    replicatedHyperThreads,
+    ExeMode_notReplicated,
+    ExeMode_replicatedSameThread,
+    ExeMode_replicatedThreadsOptimally,
+    ExeMode_replicatedThreads,
+    ExeMode_replicatedHyperThreads,
 }ExecMode;
 
 typedef struct{

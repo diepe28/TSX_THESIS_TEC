@@ -13,9 +13,9 @@
 #define MODULO 5
 
 typedef enum {
-    everyTime,
-    eachModuloTimes,
-    eachModuloTimes_Encoding
+    CheckFrequency_everyTime,
+    CheckFrequency_eachModuloTimes,
+    CheckFrequency_Encoding
 }CheckFrequency;
 
 typedef enum {
@@ -29,5 +29,5 @@ void HyperThreads_QueueTest(ExecMode execMode);
 void HyperThreads_SetQueueType(QueueType);
 void HyperThreads_SetCheckFrequency(CheckFrequency);
 void HyperThreads_TestAllCombinations();
-
+void Vector_Matrix_Mult();
 #endif //TSXPROJECT_TEST_HYPERTHREAD_H

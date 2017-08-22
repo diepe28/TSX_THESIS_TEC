@@ -35,7 +35,7 @@ void inline SectionQueue_Enqueue(SectionQueue* this, long value){
         this->sections[this->enqueueSection].isReadMode = 1;
         this->enqueueSection = (this->enqueueSection + 1) % NUM_SECTIONS;
     }
-    producerCount++; // to avoid weird behavior due optimization
+    //producerCount++; // to avoid weird behavior due optimization
 }
 
 long inline SectionQueue_Dequeue(SectionQueue* this){
@@ -51,7 +51,7 @@ long inline SectionQueue_Dequeue(SectionQueue* this){
         this->sections[this->dequeueSection].isReadMode = 0;
         this->dequeueSection = (this->dequeueSection + 1) % NUM_SECTIONS;
     }
-    consumerCount++; // to avoid weird behavior due optimization
+    //consumerCount++; // to avoid weird behavior due optimization
     return value;
 }
 
@@ -73,7 +73,7 @@ void inline SimpleQueue_Enqueue(SimpleQueue* this, long value){
     while(nextEnqPtr == this->deqPtr);
     this->content[this->enqPtr] = value;
     this->enqPtr = nextEnqPtr;
-    producerCount++; // to avoid weird behavior due optimization
+    //producerCount++; // to avoid weird behavior due optimization
 }
 
 long inline SimpleQueue_Dequeue(SimpleQueue* this){
@@ -81,6 +81,6 @@ long inline SimpleQueue_Dequeue(SimpleQueue* this){
     while(this->deqPtr == this->enqPtr);
     long value = this->content[this->deqPtr];
     this->deqPtr = (this->deqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
-    consumerCount++; // to avoid weird behavior due optimization
+    //consumerCount++; // to avoid weird behavior due optimization
     return value;
 }

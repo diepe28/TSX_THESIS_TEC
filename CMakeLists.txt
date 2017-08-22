@@ -7,6 +7,7 @@ cmake_minimum_required(VERSION 3.7)
 set( CMAKE_VERBOSE_MAKEFILE on)
 
 set(CMAKE_BUILD_TYPE Release) # optimizations, but debuging is not allowed
+#set(CMAKE_BUILD_TYPE Debug) # optimizations, but debuging is not allowed
 
 # Use the package PkgConfig to detect GTK+ headers/library files
 find_package(PkgConfig REQUIRED)
