@@ -4,7 +4,7 @@ project(tsxProject C)
 # Set the minimum version of cmake required to build this project
 cmake_minimum_required(VERSION 3.7)
 
-set( CMAKE_VERBOSE_MAKEFILE on)
+#set( CMAKE_VERBOSE_MAKEFILE on)
 
 set(CMAKE_BUILD_TYPE Release) # optimizations, but debuging is not allowed
 #set(CMAKE_BUILD_TYPE Debug) # optimizations, but debuging is not allowed
@@ -40,7 +40,7 @@ set(GCC_TM_LINK_FLAG -fgnu-tm
 
 add_definitions(${GCC_TM_LINK_FLAG})
 
-set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h Test_HyperThread.c Test_HyperThread.h Queues.c Queues.h lynxq.h)
+set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h VectorMatrixMult.c VectorMatrixMult.h Queues.c Queues.h lynxq.h FirstTestHyperThreads.c FirstTestHyperThreads.h)
 add_executable(tsxExe ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(tsxExe pthread)
