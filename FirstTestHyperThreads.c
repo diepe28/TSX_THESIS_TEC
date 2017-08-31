@@ -20,6 +20,9 @@ extern lynxQ_t lynxQ1;
 extern CheckFrequency checkFrequency;
 extern QueueType queueType;
 
+extern volatile long producerCount;
+extern volatile long consumerCount;
+
 void* PingPong(void * arg){
     _my_thread_id = (int) (int64_t) arg;
     int i = 0;

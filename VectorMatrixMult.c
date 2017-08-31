@@ -17,13 +17,18 @@ extern lynxQ_t lynxQ1;
 extern CheckFrequency checkFrequency;
 extern QueueType queueType;
 
-int vector[MATRIX_COLS];
-long producerVectorResult[MATRIX_ROWS];
-long consumerVectorResult[MATRIX_ROWS];
-int **matrix;
+extern volatile long producerCount;
+extern volatile long consumerCount;
 
-long multiply(int a, int b){
-    return a * b;
+void printMatrix(int rows, int cols, long matrix[rows][cols]){
+    int i,j;
+    for(i = 0; i < rows; i++){
+        for(j = 0; j < cols; j++){
+            printf("%ld ", matrix[i][j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
 }
 
 void Vector_Matrix_Init(){
@@ -69,7 +74,7 @@ void Vector_Matrix_ReplicatedSameThread(){
         producerVectorResult[i] = 0;
         for(j = 0; j < MATRIX_COLS; j++){
             v1 = vector[j] * matrix[i][j];
-            v2 = multiply(matrix[i][j],vector[j]);
+            v2 = vector[j] * matrix[i][j];
             if(v1 == v2){
                 producerVectorResult[i] += v1;
             }else{
@@ -268,7 +273,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg){
     _thread_id = (int) (int64_t) arg;
     long i = 0, thisValue, otherValue, modulo = 0, j, k;
     long thisValues[MODULO], otherXOR = 0, thisXOR = 0;
-    int groupLimit = MODULO -1, lastDeq, lastEnq;
+    int groupLimit = MODULO -1, lastDeq;
 
     SetThreadAffinity(_thread_id);
 
@@ -281,27 +286,9 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg){
                     otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
 
                     if(thisValue != otherValue){
-                        lastEnq = simpleSyncQueue.enqPtr;
-
-                        // Either is a soft error or a des-sync of the queue, there is a problem when there are repeated numbers
-//                        printf("Something is wrong at time %ld... DeqPtr: %d EnqPtr: %d ConsumerCount: %ld ProducerCount: %ld Value Read: %ld\n",
-//                               clock(), simpleSyncQueue.deqPtr, simpleSyncQueue.enqPtr, consumerCount, producerCount, otherValue);
-
-                        lastDeq = simpleSyncQueue.deqPtr == 0? SIMPLE_SYNC_QUEUE_LAST_VALUE : simpleSyncQueue.deqPtr -1;
-
-                        if(otherValue = simpleSyncQueue.content[lastDeq], otherValue == -2){
-                            // it could be that I am blocking him or that I have to wait a little
-                            if(false){//i have to wait){
-                                while(simpleSyncQueue.content[simpleSyncQueue.deqPtr] == -2);
-                            }else{
-                                // it means that I am blocking him
-                                simpleSyncQueue.deqPtr = lastDeq;
-                                while(simpleSyncQueue.content[simpleSyncQueue.deqPtr] == -2);
-                                otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
-                            }
-                        }
-
-                        // Barrier while(simpleSyncQueue.enqPtr = simpleSyncQueue.deqPtr);
+                        // Either is a soft error or a des-sync of the queue
+                        while(simpleSyncQueue.content[simpleSyncQueue.deqPtr] == -2);
+                        otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
 
                         if(thisValue != otherValue) {
                             printf("\n\n SOFT ERROR DETECTED ");
@@ -310,7 +297,6 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg){
                             exit(1);
                         }
                     }
-
                     consumerVectorResult[i] += thisValue;
                 }
             }
@@ -352,7 +338,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg){
 
                             // barrier
                             //while(simpleSyncQueue.enqPtr == simpleSyncQueue.deqPtr);
-                            while(consumerCount >= producerCount);
+                            //while(consumerCount >= producerCount);
 
                             otherXOR = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
 
@@ -672,7 +658,7 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
     THREAD_UTILS_CreateThreads();
 
     err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
-                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
+                         (void *) (int64_t) (useHyperThread ? 2 : 1));
 
     if (err) {
         fprintf(stderr, "Failed to create thread %d\n", 1);
@@ -697,14 +683,6 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
     // Waits for the THREAD_UTILS_NUM_THREADS other threads
     for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
         pthread_join(*THREAD_UTILS_Threads[i], NULL);
-
-    THREAD_UTILS_DestroyThreads();
-    if (lynxQ1) {
-        //lynx_queue_print_numbers();
-        queue_finalize(lynxQ1);
-        free(lynxQ1);
-        lynxQ1 = NULL;
-    }
 }
 
 void Vector_Matrix_MultAux(ExecMode executionMode) {
@@ -752,6 +730,16 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
             for (i = 0; i < MATRIX_ROWS; i++) {
                 matrixSum += producerVectorResult[i];
             }
+        }
+
+        SimpleSyncQueue_Destroy(&simpleSyncQueue);
+
+        THREAD_UTILS_DestroyThreads();
+        if (lynxQ1) {
+            //lynx_queue_print_numbers();
+            queue_finalize(lynxQ1);
+            free(lynxQ1);
+            lynxQ1 = NULL;
         }
 
         printf("Elapsed millisenconds: %f Matrix Sum: %lld\n", milliseconds_elapsed, matrixSum);
@@ -812,7 +800,6 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
 
     printf("--- Mean Execution Time of %s with %s queue %s: %f SD: %f\n\n",
            executionModeStr, queueTypeStr, checkFrequencyStr, mean, sd);
-
 }
 
 void Vector_Matrix_Mult(int useHyperThread){
@@ -827,7 +814,7 @@ void Vector_Matrix_Mult(int useHyperThread){
     Global_SetQueueType(QueueType_Simple);
     Global_SetCheckFrequency(CheckFrequency_everyTime);
 
-    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    //Vector_Matrix_MultAux(ExeMode_replicatedThreads);
     Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 //
 //    Global_SetCheckFrequency(CheckFrequency_eachModuloTimes);
@@ -835,18 +822,18 @@ void Vector_Matrix_Mult(int useHyperThread){
 //    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
 //    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 //
-    Global_SetCheckFrequency(CheckFrequency_Encoding);
-
-    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
-    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+//    Global_SetCheckFrequency(CheckFrequency_Encoding);
+//
+//    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 
     // ----------------- SIMPLE SYNC QUEUE -----------------
-//    printf("--------------- Simple Sync Queue Info, Size: %d \n\n", SIMPLE_SYNC_QUEUE_SIZE);
-//    Global_SetQueueType(QueueType_SimpleSync);
+    printf("--------------- Simple Sync Queue Info, Size: %d \n\n", SIMPLE_SYNC_QUEUE_SIZE);
+    Global_SetQueueType(QueueType_SimpleSync);
 //
-//    Global_SetCheckFrequency(CheckFrequency_everyTime);
-//    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
-    //Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+    Global_SetCheckFrequency(CheckFrequency_everyTime);
+    //Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 
 //    Global_SetCheckFrequency(CheckFrequency_Encoding);
 //    Vector_Matrix_MultAux(ExeMode_replicatedThreads);

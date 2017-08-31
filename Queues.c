@@ -22,9 +22,6 @@ void SetThreadAffinity(int threadId) {
 ///////////////////////////////// Multi Section Queue ////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
 
-long volatile producerCount = 0;
-long volatile consumerCount = 0;
-
 SectionQueue SectionQueue_Init(){
     int i;
     SectionQueue this;
@@ -69,9 +66,6 @@ long inline SectionQueue_Dequeue(SectionQueue* this){
     return value;
 }
 
-void SectionQueue_WastedInst(){
-    printf("Consumer wasted %ld, producer wasted: %ld \n", consumerCount, producerCount);
-}
 //////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////// Simple Queue ///////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -105,31 +99,34 @@ long inline SimpleQueue_Dequeue(SimpleQueue* this){
 
 SimpleSyncQueue SimpleSyncQueue_Init(){
     SimpleSyncQueue this;
+    int i = 0;
     this.content = (long*) (malloc(sizeof(long) * SIMPLE_SYNC_QUEUE_SIZE));
-    this.enqPtr = this.deqPtr;
+    for(; i < SIMPLE_SYNC_QUEUE_SIZE; i++){
+        this.content[i] = ALREADY_CONSUMED;
+    }
+    this.enqPtr = this.deqPtr = 0;
     return this;
 }
 
 void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value){
     int nextEnqPtr = (this->enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-    while(nextEnqPtr == this->deqPtr);
-        //sleep(1);
+
+    while(this->content[nextEnqPtr] != ALREADY_CONSUMED);
 
     this->content[this->enqPtr] = value;
-    clock_t t1 = clock();
     this->enqPtr = nextEnqPtr;
     //producerCount++;
     //printf("Producer content[%d]: %ld at time: %ld\n", this->enqPtr -1, value, t1);
 }
 
 long SimpleSyncQueue_Dequeue(SimpleSyncQueue* this){
-
     long value = this->content[this->deqPtr];
-    this->content[this->deqPtr] = -2;
-    clock_t t1 = clock();
 
-    this->deqPtr = (this->deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-    //consumerCount++;
+    if(value != ALREADY_CONSUMED) {
+        this->content[this->deqPtr] = ALREADY_CONSUMED;
+        this->deqPtr = (this->deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+        //consumerCount++;
+    }
     //printf("Consumer content[%d]: %ld at time: %ld\n", this->deqPtr -1, value, t1);
     return value;
 }

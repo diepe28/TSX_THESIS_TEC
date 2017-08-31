@@ -10,11 +10,20 @@
 #include "Queues.h"
 #include <glib.h>
 
-#define MATRIX_COLS 20000
-#define MATRIX_ROWS 20000
+#define MATRIX_COLS 10000
+#define MATRIX_ROWS 10000
 
 //#define MATRIX_COLS 100
 //#define MATRIX_ROWS 100
 
+int vector[MATRIX_COLS];
+long producerVectorResult[MATRIX_ROWS];
+long consumerVectorResult[MATRIX_ROWS];
+int **matrix;
+
+void Vector_Matrix_Init();
 void Vector_Matrix_Mult(int useHyperThread);
+
+void printMatrix(int rows, int cols, long matrix[rows][cols]);
+
 #endif //TSXPROJECT_TEST_HYPERTHREAD_H

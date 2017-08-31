@@ -10,16 +10,19 @@
 #include "lynxq.h"
 #include "rtm.h"
 
-//#define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
-#define LYNXQ_QUEUE_SIZE (1<<20) /* 2MB */
+#define SIMPLE_QUEUE_MAX_ELEMENTS 4096
 
 #define SECTION_SIZE 1000
 #define NUM_SECTIONS 4
 
-#define SIMPLE_QUEUE_MAX_ELEMENTS 4096
+#define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
+
 //#define SIMPLE_SYNC_QUEUE_SIZE 10000
-#define SIMPLE_SYNC_QUEUE_SIZE 10
-#define SIMPLE_SYNC_QUEUE_LAST_VALUE 9
+
+#define SIMPLE_SYNC_QUEUE_SIZE 4096
+#define SIMPLE_SYNC_QUEUE_LAST_VALUE 4095
+#define ALREADY_CONSUMED -2
+
 #define NUM_RUNS 5
 #define MODULO 5
 
@@ -37,9 +40,6 @@ typedef enum {
     QueueType_Section,
     QueueType_lynxq
 }QueueType;
-
-extern long volatile producerCount;
-extern long volatile consumerCount;
 
 typedef enum{
     ExeMode_notReplicated,
@@ -84,11 +84,10 @@ SimpleQueue SimpleQueue_Init();
 void SimpleQueue_Enqueue(SimpleQueue* this, long value);
 long SimpleQueue_Dequeue(SimpleQueue* this);
 
-
 /////////////// Simple Without Sync Queue ///////////////
 typedef struct{
     //long content[SIMPLE_QUEUE_MAX_ELEMENTS];
-    long* content;
+    volatile long* content;
     double padding0[15];
     volatile int enqPtr;
     double padding1[15];
@@ -110,6 +109,9 @@ lynxQ_t lynxQ1;
 
 CheckFrequency checkFrequency;
 QueueType queueType;
+
+volatile long producerCount;
+volatile long consumerCount;
 
 void Global_SetQueueType(QueueType newQueueType);
 void Global_SetCheckFrequency(CheckFrequency newCheckFrequency);

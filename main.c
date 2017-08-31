@@ -25,16 +25,7 @@
 //    return b;
 //}
 
-void printMatrix(int rows, int cols, long matrix[rows][cols]){
-    int i,j;
-    for(i = 0; i < rows; i++){
-        for(j = 0; j < cols; j++){
-            printf("%ld ", matrix[i][j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-}
+
 
 int main(int argc, char **argv){
     srand(time(NULL));
