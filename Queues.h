@@ -7,23 +7,22 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <errno.h>
 #include "lynxq.h"
 #include "rtm.h"
+//PCQUEUE-TODO #include "pcqueue.h"
 
-#define SIMPLE_QUEUE_MAX_ELEMENTS 4096
+#define SIMPLE_QUEUE_MAX_ELEMENTS 2048
 
 #define SECTION_SIZE 1000
 #define NUM_SECTIONS 4
 
 #define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
 
-//#define SIMPLE_SYNC_QUEUE_SIZE 10000
-
-#define SIMPLE_SYNC_QUEUE_SIZE 4096
-#define SIMPLE_SYNC_QUEUE_LAST_VALUE 4095
+#define SIMPLE_SYNC_QUEUE_SIZE 256
 #define ALREADY_CONSUMED -2
 
-#define NUM_RUNS 5
+#define NUM_RUNS 10
 #define MODULO 5
 
 void SetThreadAffinity(int threadId);
@@ -38,7 +37,8 @@ typedef enum {
     QueueType_Simple,
     QueueType_SimpleSync,
     QueueType_Section,
-    QueueType_lynxq
+    QueueType_lynxq,
+    QueueType_PCQueue
 }QueueType;
 
 typedef enum{
@@ -87,11 +87,11 @@ long SimpleQueue_Dequeue(SimpleQueue* this);
 /////////////// Simple Without Sync Queue ///////////////
 typedef struct{
     //long content[SIMPLE_QUEUE_MAX_ELEMENTS];
-    volatile long* content;
+    int deqPtr;
     double padding0[15];
-    volatile int enqPtr;
+    int enqPtr;
     double padding1[15];
-    volatile int deqPtr;
+    volatile long* content;
 }SimpleSyncQueue;
 
 SimpleSyncQueue SimpleSyncQueue_Init();
@@ -106,6 +106,7 @@ SectionQueue sectionQueue;
 SimpleQueue simpleQueue;
 SimpleSyncQueue simpleSyncQueue;
 lynxQ_t lynxQ1;
+//PCQUEUE-TODO PCQueue pcQueue;
 
 CheckFrequency checkFrequency;
 QueueType queueType;

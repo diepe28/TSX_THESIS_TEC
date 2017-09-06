@@ -40,7 +40,7 @@ set(GCC_TM_LINK_FLAG -fgnu-tm
 
 add_definitions(${GCC_TM_LINK_FLAG})
 
-set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h VectorMatrixMult.c VectorMatrixMult.h Queues.c Queues.h lynxq.h FirstTestHyperThreads.c FirstTestHyperThreads.h)
+set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h VectorMatrixMult.c VectorMatrixMult.h Queues.c Queues.h lynxq.h FirstTestHyperThreads.c FirstTestHyperThreads.h pcqueue.h)
 add_executable(tsxExe ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(tsxExe pthread)

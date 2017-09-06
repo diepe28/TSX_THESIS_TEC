@@ -111,11 +111,24 @@ SimpleSyncQueue SimpleSyncQueue_Init(){
 void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value){
     int nextEnqPtr = (this->enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
 
-    while(this->content[nextEnqPtr] != ALREADY_CONSUMED);
+    while(this->content[nextEnqPtr] != ALREADY_CONSUMED)
+    {
+        asm("pause"); // alone instead of just the busy waiting helps a bit
+        //__asm__("HLT");
+        //producerCount++;
+        //pthread_yield();
+        //int lastEnqPtr = this->enqPtr == 0? SIMPLE_SYNC_QUEUE_SIZE -1 : this->enqPtr -1;
+
+        //while(this->content[lastEnqPtr] != ALREADY_CONSUMED)
+        //{
+            //pthread_yield();
+            //pthread_yield();
+            //usleep(2);
+        //}
+    }
 
     this->content[this->enqPtr] = value;
     this->enqPtr = nextEnqPtr;
-    //producerCount++;
     //printf("Producer content[%d]: %ld at time: %ld\n", this->enqPtr -1, value, t1);
 }
 
@@ -127,6 +140,7 @@ long SimpleSyncQueue_Dequeue(SimpleSyncQueue* this){
         this->deqPtr = (this->deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
         //consumerCount++;
     }
+
     //printf("Consumer content[%d]: %ld at time: %ld\n", this->deqPtr -1, value, t1);
     return value;
 }
