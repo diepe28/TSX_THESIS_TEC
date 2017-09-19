@@ -13,7 +13,7 @@ extern SectionQueue sectionQueue;
 extern SimpleQueue simpleQueue;
 extern SimpleSyncQueue simpleSyncQueue;
 extern lynxQ_t lynxQ1;
-//PCQUEUE-TODO extern PCQueue pcQueue;
+extern PCQueue pcQueue;
 
 extern CheckFrequency checkFrequency;
 extern QueueType queueType;
@@ -240,7 +240,7 @@ void Vector_Matrix_SimpleQueue_Consumer(void *arg){
 
 void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
     _thread_id = (int) (int64_t) arg;
-    long i = 0, k, j, thisValue;
+    long i = 0, j, thisValue;
 
     SetThreadAffinity(_thread_id);
 
@@ -526,7 +526,7 @@ void Vector_Matrix_LynxQueue_Consumer(void *arg){
                 consumerVectorResult[i] = 0;
                 for(j = 0; j < MATRIX_COLS; j++){
                     thisValue = vector[j] * matrix[i][j];
-                    //otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                    otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
                     //printf("Consumer reads value correctly\n");
 
                     if(thisValue != otherValue){
@@ -548,7 +548,7 @@ void Vector_Matrix_LynxQueue_Consumer(void *arg){
 
                     if(modulo++ == groupLimit){
                         for(k = 0; k < MODULO; k++) {
-                            //otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                            otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
                             if(thisValues[k] != otherValue){
                                 printf("\n\n SOFT ERROR DETECTED \n\n");
                                 exit(0);
@@ -570,7 +570,7 @@ void Vector_Matrix_LynxQueue_Consumer(void *arg){
                     thisXOR ^= thisValue;
 
                     if(modulo++ == groupLimit) {
-                        //otherXOR = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
+                        otherXOR = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
                         if(thisXOR != otherXOR){
                             printf("\n\n SOFT ERROR DETECTED \n\n");
                             exit(0);
@@ -599,8 +599,8 @@ void Vector_Matrix_PCQueue_Producer(void* arg) {
                 producerVectorResult[i] = 0;
                 for (j = 0; j < MATRIX_COLS; j++) {
                     thisValue = vector[j] * matrix[i][j];
+                    PCQueuePush(pcQueue, (char*) thisValue);
                     producerVectorResult[i] += thisValue;
-                    //PCQUEUE-TODO PCQueuePush(pcQueue, (char*) thisValue);
                 }
             }
             break;
@@ -619,10 +619,12 @@ void Vector_Matrix_PCQueue_Consumer(void *arg){
                 consumerVectorResult[i] = 0;
                 for(j = 0; j < MATRIX_COLS; j++){
                     thisValue = vector[j] * matrix[i][j];
-                    //PCQUEUE-TODO otherValue = (long) PCQueuePop(pcQueue);
+                    //otherValue = (long) PCQueuePop(pcQueue);
+
+                    while((otherValue = (long) PCQueuePop(pcQueue)) == 0);
 
                     if(thisValue != otherValue) {
-                        printf("\n\n SOFT ERROR DETECTED at iteration: %ld %ld vs %ld \n", consumerCount-1, thisValue, otherValue);
+                        printf("\n\n SOFT ERROR DETECTED at iteration: %ld %ld vs %ld \n", j+(MATRIX_COLS*i), thisValue, otherValue);
                         exit(1);
                     }
 
@@ -670,7 +672,7 @@ void SetThreadsPriority(void *_start_routine, int consumerCore){
 
 void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
     int err = 0, numThreads;
-    void *_start_routine;
+    void *_start_routine = 0;
     long i = 0;
     int producerCore = 0;
     int consumerCore = useHyperThread? producerCore +2 : producerCore +1;;
@@ -699,7 +701,7 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
             break;
 
         case QueueType_PCQueue:
-            //PCQUEUE-TODO pcQueue = PCQueueCreate();
+            pcQueue = PCQueueCreate();
             _start_routine = &Vector_Matrix_PCQueue_Consumer;
             break;
     }
@@ -795,7 +797,7 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
             SimpleSyncQueue_Destroy(&simpleSyncQueue);
 
         if(queueType == QueueType_PCQueue) {
-            //PCQUEUE-TODO PCQueueDestroy(pcQueue);
+            PCQueueDestroy(pcQueue);
         }
 
         THREAD_UTILS_DestroyThreads();
@@ -877,7 +879,7 @@ void Vector_Matrix_Mult(int useHyperThread) {
     int i;
     Vector_Matrix_Init();
 
-//    Vector_Matrix_MultAux(ExeMode_notReplicated);
+    Vector_Matrix_MultAux(ExeMode_notReplicated);
 //    Vector_Matrix_MultAux(ExeMode_replicatedSameThread);
 
     // ----------------- SIMPLE QUEUE -----------------
@@ -943,11 +945,11 @@ void Vector_Matrix_Mult(int useHyperThread) {
 //        Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 
     // ----------------- LYNXQ QUEUE -----------------
-//    Global_SetQueueType(QueueType_lynxq);
-//    Global_SetCheckFrequency(CheckFrequency_everyTime);
+    Global_SetQueueType(QueueType_lynxq);
+    Global_SetCheckFrequency(CheckFrequency_everyTime);
 //
 //    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
-//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 
 //    Global_SetCheckFrequency(CheckFrequency_eachModuloTimes);
 //

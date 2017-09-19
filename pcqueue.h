@@ -18,6 +18,8 @@
 #ifndef __PCQUEUE__
 #define __PCQUEUE__
 
+#define _MEMCHECK(p) do{}while(0)
+#define CmiAssert(expr) ((void) 0)
 
 /*****************************************************************************
  * #define CMK_PCQUEUE_LOCK
@@ -42,10 +44,14 @@
 #define PCQueue_CmiMemoryAtomicIncrement(someInt)  someInt=someInt+1
 #define PCQueue_CmiMemoryAtomicDecrement(someInt)  someInt=someInt-1
 #else
-#define PCQueue_CmiMemoryReadFence                 CmiMemoryReadFence
-#define PCQueue_CmiMemoryWriteFence                CmiMemoryWriteFence
-#define PCQueue_CmiMemoryAtomicIncrement           CmiMemoryAtomicIncrement
-#define PCQueue_CmiMemoryAtomicDecrement           CmiMemoryAtomicDecrement
+//#define PCQueue_CmiMemoryReadFence                 CmiMemoryReadFence
+//#define PCQueue_CmiMemoryWriteFence                CmiMemoryWriteFence
+//#define PCQueue_CmiMemoryAtomicIncrement           CmiMemoryAtomicIncrement
+//#define PCQueue_CmiMemoryAtomicDecrement           CmiMemoryAtomicDecrement
+#define PCQueue_CmiMemoryReadFence()                 asm volatile("": ::"memory")
+#define PCQueue_CmiMemoryWriteFence() __sync_synchronize ()
+#define PCQueue_CmiMemoryAtomicIncrement(someInt) __sync_fetch_and_add (&(someInt), 1)
+#define PCQueue_CmiMemoryAtomicDecrement(someInt) __sync_fetch_and_sub (&(someInt), 1)
 #endif
 
 #if CMK_SMP

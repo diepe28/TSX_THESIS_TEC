@@ -10,7 +10,7 @@
 #include <errno.h>
 #include "lynxq.h"
 #include "rtm.h"
-//PCQUEUE-TODO #include "pcqueue.h"
+#include "pcqueue.h"
 
 #define SIMPLE_QUEUE_MAX_ELEMENTS 2048
 
@@ -106,7 +106,7 @@ SectionQueue sectionQueue;
 SimpleQueue simpleQueue;
 SimpleSyncQueue simpleSyncQueue;
 lynxQ_t lynxQ1;
-//PCQUEUE-TODO PCQueue pcQueue;
+PCQueue pcQueue;
 
 CheckFrequency checkFrequency;
 QueueType queueType;
