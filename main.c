@@ -7,6 +7,8 @@
 /// Transactions_Test to test how to recover from errors using Transactional Memory.
 /// \return 0
 
+// -D CMAKE_C_COMPILER=/usr/bin/clang-4.0 -D CMAKE_CXX_COMPILER=/usr/bin/clang++-4.0
+//-D CMAKE_C_COMPILER=/usr/bin/gcc -D CMAKE_CXX_COMPILER=/usr/bin/g++
 
 //#include "TestCoreAffinity.h"
 #include "VectorMatrixMult.h"

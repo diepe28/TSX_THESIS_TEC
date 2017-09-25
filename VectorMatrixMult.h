@@ -10,8 +10,8 @@
 #include "Queues.h"
 #include <glib.h>
 
-#define MATRIX_COLS 10000
-#define MATRIX_ROWS 10000
+#define MATRIX_COLS 30000
+#define MATRIX_ROWS 30000
 
 int vector[MATRIX_COLS];
 long producerVectorResult[MATRIX_ROWS];

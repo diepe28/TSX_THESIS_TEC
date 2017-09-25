@@ -32,7 +32,7 @@ typedef enum {
     CheckFrequency_SynchronousOneVar,
     CheckFrequency_SynchronousTwoVars,
     CheckFrequency_SynchronousQueue,
-    CheckFrequency_SynchronousSemaphores,
+    CheckFrequency_SynchronousVolatile,
 
     CheckFrequency_everyTime,
     CheckFrequency_eachModuloTimes,
