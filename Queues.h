@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
+#include <semaphore.h>
 #include "lynxq.h"
 #include "rtm.h"
 #include "pcqueue.h"
@@ -22,12 +23,17 @@
 #define SIMPLE_SYNC_QUEUE_SIZE 256
 #define ALREADY_CONSUMED -2
 
-#define NUM_RUNS 10
+#define NUM_RUNS 5
 #define MODULO 5
 
 void SetThreadAffinity(int threadId);
 
 typedef enum {
+    CheckFrequency_SynchronousOneVar,
+    CheckFrequency_SynchronousTwoVars,
+    CheckFrequency_SynchronousQueue,
+    CheckFrequency_SynchronousSemaphores,
+
     CheckFrequency_everyTime,
     CheckFrequency_eachModuloTimes,
     CheckFrequency_Encoding
@@ -37,8 +43,7 @@ typedef enum {
     QueueType_Simple,
     QueueType_SimpleSync,
     QueueType_Section,
-    QueueType_lynxq,
-    QueueType_PCQueue
+    QueueType_lynxq
 }QueueType;
 
 typedef enum{
@@ -92,6 +97,10 @@ typedef struct{
     int enqPtr;
     double padding1[15];
     volatile long* content;
+    double padding2[15];
+    volatile int checkState; // 0 not verified, 1 no soft error, 1 soft error
+    double padding3[15];
+    volatile long currentValue;
 }SimpleSyncQueue;
 
 SimpleSyncQueue SimpleSyncQueue_Init();
@@ -106,7 +115,6 @@ SectionQueue sectionQueue;
 SimpleQueue simpleQueue;
 SimpleSyncQueue simpleSyncQueue;
 lynxQ_t lynxQ1;
-PCQueue pcQueue;
 
 CheckFrequency checkFrequency;
 QueueType queueType;

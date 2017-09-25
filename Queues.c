@@ -75,21 +75,23 @@ SimpleQueue SimpleQueue_Init(){
     this.enqPtr = this.deqPtr = 0;
     return this;
 }
-void inline SimpleQueue_Enqueue(SimpleQueue* this, long value){
+void inline SimpleQueue_Enqueue(SimpleQueue* this, long value) {
     //printf("Producer enqPtr: %d\n", this->enqPtr);
     int nextEnqPtr = (this->enqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
     while(nextEnqPtr == this->deqPtr);
+
     this->content[this->enqPtr] = value;
     this->enqPtr = nextEnqPtr;
-    //producerCount++; // to avoid weird behavior due optimizations
+    //producerCount++;
 }
 
 long inline SimpleQueue_Dequeue(SimpleQueue* this){
     //printf("Consumer deqPtr: %d\n", this->deqPtr);
     while(this->deqPtr == this->enqPtr);
+
     long value = this->content[this->deqPtr];
     this->deqPtr = (this->deqPtr + 1) % SIMPLE_QUEUE_MAX_ELEMENTS;
-    //consumerCount++; // to avoid weird behavior due optimizations
+    //consumerCount++;
     return value;
 }
 
@@ -104,6 +106,8 @@ SimpleSyncQueue SimpleSyncQueue_Init(){
     for(; i < SIMPLE_SYNC_QUEUE_SIZE; i++){
         this.content[i] = ALREADY_CONSUMED;
     }
+    this.currentValue = ALREADY_CONSUMED;
+    this.checkState = 1;
     this.enqPtr = this.deqPtr = 0;
     return this;
 }
