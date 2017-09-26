@@ -20,7 +20,7 @@
 
 #define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
 
-#define SIMPLE_SYNC_QUEUE_SIZE 256
+#define SIMPLE_SYNC_QUEUE_SIZE 512
 #define ALREADY_CONSUMED -2
 
 #define NUM_RUNS 5
@@ -33,6 +33,7 @@ typedef enum {
     CheckFrequency_SynchronousTwoVars,
     CheckFrequency_SynchronousQueue,
     CheckFrequency_SynchronousVolatile,
+    CheckFrequency_SynchronousVolatileEncoding,
 
     CheckFrequency_everyTime,
     CheckFrequency_eachModuloTimes,

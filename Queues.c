@@ -118,7 +118,6 @@ void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value){
     while(this->content[nextEnqPtr] != ALREADY_CONSUMED)
     {
         asm("pause"); // alone instead of just the busy waiting helps a bit
-        //__asm__("HLT");
         //producerCount++;
         //pthread_yield();
         //int lastEnqPtr = this->enqPtr == 0? SIMPLE_SYNC_QUEUE_SIZE -1 : this->enqPtr -1;

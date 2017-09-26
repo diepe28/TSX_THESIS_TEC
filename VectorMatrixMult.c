@@ -14,7 +14,6 @@ __thread int _thread_id;
 extern SectionQueue sectionQueue;
 extern SimpleQueue simpleQueue;
 extern SimpleSyncQueue simpleSyncQueue;
-extern lynxQ_t lynxQ1;
 
 extern CheckFrequency checkFrequency;
 extern QueueType queueType;
@@ -159,7 +158,7 @@ void Vector_Matrix_SimpleQueue_Consumer(void *arg){
 
 void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
     _thread_id = (int) (int64_t) arg;
-    long i = 0, j, thisValue;
+    long i = 0, j, thisValue, thisXOR, times = 0;
 
     SetThreadAffinity(_thread_id);
 
@@ -178,7 +177,37 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                 simpleSyncQueue.checkState = 0;
 
                 while (simpleSyncQueue.checkState == 0){
-                    //asm("pause");
+                    asm("pause");
+                }
+
+                // Pretend Volatile store
+                producerVectorResult[i] = thisValue;
+            }
+            break;
+
+        case CheckFrequency_SynchronousVolatileEncoding:
+            for (i = 0; i < MATRIX_ROWS; i++) {
+                thisValue = thisXOR = 0;
+                for (j = 0; j < MATRIX_COLS; j++) {
+                    thisValue += vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(times++ == MODULO){
+                        SimpleSyncQueue_Enqueue(&simpleSyncQueue, thisXOR);
+                        times = 0;
+                    }
+                }
+
+                // in case there are still values that have not been checked
+                if(times != 0){
+                    SimpleSyncQueue_Enqueue(&simpleSyncQueue, thisXOR);
+                }
+
+                simpleSyncQueue.currentValue = thisValue;
+                simpleSyncQueue.checkState = 0;
+
+                while (simpleSyncQueue.checkState == 0){
+                    asm("pause");
                 }
 
                 // Pretend Volatile store
@@ -198,8 +227,6 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                     while(simpleSyncQueue.checkState == 0) {
                         //producerCount++;
                         //asm("pause");
-                        //usleep(10);
-                        //pthread_yield();
                     }
 
                     producerVectorResult[i] += thisValue;
@@ -232,7 +259,7 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
 
 void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
     _thread_id = (int) (int64_t) arg;
-    long i = 0, thisValue, otherValue, j;
+    long i = 0, thisValue, otherValue, otherXOR, thisXOR, times = 0, j;
 
     SetThreadAffinity(_thread_id);
 
@@ -242,46 +269,108 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                 thisValue = 0;
                 for (j = 0; j < MATRIX_COLS; j++) {
                     thisValue += vector[j] * matrix[i][j];
-
                     otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
+
                     if (thisValue != otherValue) {
+                        // des-sync of the queue
+                        if(otherValue == ALREADY_CONSUMED) {
+                            do{
+                                asm("pause");
+                            }
+                            while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED);
 
-                        // Either is a soft error or a des-sync of the queue
-                        while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED){
-                             //asm("pause");
+                            otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
+
+                            if (thisValue == otherValue) continue;
                         }
 
-                        otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
-
-                        if (thisValue != otherValue) {
-                            printf("\n\n SOFT ERROR DETECTED \n DeqPtr: %d EnqPtr: %d ConsumerCount: %ld "
-                                           "ProducerCount: %ld This Value: %ld vs Value Read: %ld\n",
-                                   simpleSyncQueue.deqPtr,
-                                   simpleSyncQueue.enqPtr, consumerCount, producerCount, thisValue, otherValue);
-                            exit(1);
-                        }
+                        printf("\n\n SOFT ERROR DETECTED \n");
+                        exit(1);
                     }
                 }
 
                 while (simpleSyncQueue.checkState == 1){
-                    //asm("pause");
+                    asm("pause");
                 }
 
                 if(thisValue != simpleSyncQueue.currentValue){
-                    printf("\n\n SOFT ERROR DETECTED \n DeqPtr: %d EnqPtr: %d ConsumerCount: %ld "
-                                   "ProducerCount: %ld This Value: %ld vs Value Read: %ld\n",
-                           simpleSyncQueue.deqPtr,
-                           simpleSyncQueue.enqPtr, consumerCount, producerCount, thisValue, otherValue);
+                    printf("\n\n SOFT ERROR DETECTED \n");
                     exit(1);
                 }
 
                 // Pretend Volatile Store
                 consumerVectorResult[i] = thisValue;
                 simpleSyncQueue.checkState = 1;
-
-                consumerVectorResult[i] = thisValue;
             }
             break;
+
+        case CheckFrequency_SynchronousVolatileEncoding:
+            for (i = 0; i < MATRIX_ROWS; i++) {
+                thisValue = thisXOR = 0;
+                for (j = 0; j < MATRIX_COLS; j++) {
+                    thisValue += vector[j] * matrix[i][j];
+                    thisXOR ^= thisValue;
+
+                    if(times++ == MODULO) {
+                        otherXOR = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
+                        times = 0;
+                        if (thisXOR != otherXOR) {
+                            // des-sync of the queue
+                            if (otherXOR == ALREADY_CONSUMED) {
+                                do {
+                                    asm("pause");
+                                } while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED);
+
+                                otherXOR = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
+
+                                if (thisXOR == otherXOR) continue;
+                            }
+
+                            printf("\n\n SOFT ERROR DETECTED \n");
+                            exit(1);
+                        }
+                    }
+                }
+
+                // in case there are still values that have not been checked
+                if(times != 0){
+                    otherXOR = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
+                    if (thisXOR != otherXOR) {
+                        // des-sync of the queue
+                        if (otherXOR == ALREADY_CONSUMED) {
+                            do {
+                                asm("pause");
+                            } while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED);
+
+                            otherXOR = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
+
+                            if (thisXOR != otherXOR){
+                                printf("\n\n SOFT ERROR DETECTED \n");
+                                exit(1);
+                            }
+                        }else{
+                            printf("\n\n SOFT ERROR DETECTED \n");
+                            exit(1);
+                        }
+                    }
+                }
+
+                while (simpleSyncQueue.checkState == 1){
+                    asm("pause");
+                }
+
+                if(thisValue != simpleSyncQueue.currentValue){
+                    printf("\n\n SOFT ERROR DETECTED \n");
+                    exit(1);
+                }
+
+                // Pretend Volatile Store
+                consumerVectorResult[i] = thisValue;
+                simpleSyncQueue.checkState = 1;
+            }
+            break;
+
+
 
         case CheckFrequency_SynchronousTwoVars:
             for (i = 0; i < MATRIX_ROWS; i++) {
@@ -292,14 +381,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                     while(simpleSyncQueue.checkState == 1) {
                         //consumerCount++;
                         //asm("pause");
-                        //usleep(10);
-                        //pthread_yield();
                     }
-
-//                    if(simpleSyncQueue.currentValue != thisValue){
-//                        printf("\n\n SOFT ERROR DETECTED \n ");
-//                        exit(1);
-//                    }
 
                     simpleSyncQueue.checkState = 1;
                     consumerVectorResult[i] += thisValue;
@@ -318,11 +400,6 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                         //asm("pause");
                     }
 
-//                    if(simpleSyncQueue.currentValue != thisValue){
-//                        printf("\n\n SOFT ERROR DETECTED \n ");
-//                        exit(1);
-//                    }
-
                     simpleSyncQueue.currentValue = ALREADY_CONSUMED;
                     consumerVectorResult[i] += thisValue;
                 }
@@ -333,95 +410,6 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
             printf("Something is wrong here!\n");
             exit(1);
 
-    }
-}
-
-
-// Lynx Queue
-
-void Vector_Matrix_LynxQueue_Producer(void* arg){
-    _thread_id = (int) (int64_t) arg;
-    long i = 0, thisValue, j;
-
-    SetThreadAffinity(_thread_id);
-
-    switch (checkFrequency) {
-        case CheckFrequency_everyTime:
-            for(i = 0; i < MATRIX_ROWS; i++){
-                producerVectorResult[i] = 0;
-                for(j = 0; j < MATRIX_COLS; j++){
-                    thisValue = vector[j] * matrix[i][j];
-                    producerVectorResult[i] += thisValue;
-                    queue_push_long(lynxQ1, thisValue);
-                }
-            }
-            queue_push_done(lynxQ1);
-            break;
-
-        case CheckFrequency_SynchronousTwoVars:
-            for(i = 0; i < MATRIX_ROWS; i++){
-                producerVectorResult[i] = 0;
-                for(j = 0; j < MATRIX_COLS; j++){
-                    thisValue = vector[j] * matrix[i][j];
-                    queue_push_long(lynxQ1, thisValue);
-                    checkPerformed = 0;
-                    while(checkPerformed == 0) asm("pause");
-                    producerVectorResult[i] += thisValue;
-                }
-            }
-            queue_push_done(lynxQ1);
-            break;
-
-        default: break;
-    }
-}
-
-void Vector_Matrix_LynxQueue_Consumer(void *arg){
-    _thread_id = (int) (int64_t) arg;
-    long i = 0, thisValue, otherValue, j;
-
-    SetThreadAffinity(_thread_id);
-
-    /* Busy wait until pop thread is ready to start */
-    queue_busy_wait_pop_ready(lynxQ1);
-
-    switch(checkFrequency) {
-        case CheckFrequency_everyTime:
-            for (i = 0; i < MATRIX_ROWS; i++) {
-                consumerVectorResult[i] = 0;
-                for (j = 0; j < MATRIX_COLS; j++) {
-                    thisValue = vector[j] * matrix[i][j];
-                    otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
-
-                    if (thisValue != otherValue) {
-                        printf("\n\n SOFT ERROR DETECTED \n\n");
-                        exit(0);
-                    }
-
-                    consumerVectorResult[i] += thisValue;
-                }
-            }
-            queue_pop_done(lynxQ1);
-            break;
-
-        case CheckFrequency_SynchronousTwoVars:
-            for (i = 0; i < MATRIX_ROWS; i++) {
-                consumerVectorResult[i] = 0;
-                for (j = 0; j < MATRIX_COLS; j++) {
-                    thisValue = vector[j] * matrix[i][j];
-                    otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
-
-                    if (thisValue != otherValue) {
-                        printf("\n\n SOFT ERROR DETECTED \n\n");
-                        exit(0);
-                    }
-                    checkPerformed = 1;
-                    consumerVectorResult[i] += thisValue;
-                }
-            }
-            queue_pop_done(lynxQ1);
-            break;
-        default: break;
     }
 }
 
@@ -479,11 +467,6 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
             simpleSyncQueue = SimpleSyncQueue_Init();
             _start_routine = Vector_Matrix_SimpleSyncQueue_Consumer;
             break;
-
-        case QueueType_lynxq:
-            lynxQ1 = queue_init(LYNXQ_QUEUE_SIZE);
-            _start_routine = &Vector_Matrix_LynxQueue_Consumer;
-            break;
         default: break;
     }
 
@@ -507,9 +490,6 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
         case QueueType_SimpleSync:
             Vector_Matrix_SimpleSyncQueue_Producer((void *) (int64_t)producerCore);
             break;
-        case QueueType_lynxq:
-            Vector_Matrix_LynxQueue_Producer((void *) (int64_t)producerCore);
-            break;
         default: break;
     }
 
@@ -528,8 +508,8 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
     gulong fractional_part;
     gdouble milliseconds_elapsed;
     char queueTypeStr[30];
-    char checkFrequencyStr[50];
-    char executionModeStr[50];
+    char checkFrequencyStr[60];
+    char executionModeStr[60];
 
     for(n = 0; n < NUM_RUNS; n++) {
         consumerCount = producerCount = 0;
@@ -575,12 +555,6 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
             SimpleSyncQueue_Destroy(&simpleSyncQueue);
 
         THREAD_UTILS_DestroyThreads();
-        if (lynxQ1) {
-            //lynx_queue_print_numbers();
-            queue_finalize(lynxQ1);
-            free(lynxQ1);
-            lynxQ1 = NULL;
-        }
 
         printf("Elapsed millisenconds: %f Matrix Sum: %lld ... Consumer waiting: %ld ... Producer waiting: %ld\n",
                milliseconds_elapsed, matrixSum, consumerCount, producerCount);
@@ -626,7 +600,10 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
             sprintf(checkFrequencyStr, "checking synchronously with the queue");
             break;
         case CheckFrequency_SynchronousVolatile:
-            sprintf(checkFrequencyStr, "checking synchronously on volatile stores");
+            sprintf(checkFrequencyStr, "checking synchronously volatile stores");
+            break;
+        case CheckFrequency_SynchronousVolatileEncoding:
+            sprintf(checkFrequencyStr, "checking synchronously volatile stores encoding");
             break;
         default: break;
     }
@@ -662,17 +639,14 @@ void Vector_Matrix_Mult(int useHyperThread) {
     // ----------------- SIMPLE SYNC QUEUE -----------------
 //    printf("--------------- Simple Sync Queue Info, Size: %d \n\n", SIMPLE_SYNC_QUEUE_SIZE);
     Global_SetQueueType(QueueType_SimpleSync);
-    Global_SetCheckFrequency(CheckFrequency_SynchronousVolatile);
+//    Global_SetCheckFrequency(CheckFrequency_SynchronousVolatile);
 //
+//    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+    Global_SetCheckFrequency(CheckFrequency_SynchronousVolatileEncoding);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads);
     Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
-
-//    Global_SetCheckFrequency(CheckFrequency_SynchronousQueue);
-//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
-
-//    Global_SetCheckFrequency(CheckFrequency_SynchronousOneVar);
-//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
-
 
     for(i = 0; i < MATRIX_ROWS; i++){
         free(matrix[i]);
