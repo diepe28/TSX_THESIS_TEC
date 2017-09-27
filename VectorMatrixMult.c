@@ -165,7 +165,7 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
     //display_thread_sched_attr("Attributes on producer thread");
 
     switch (checkFrequency) {
-        case CheckFrequency_SynchronousVolatile:
+        case CheckFrequency_Volatile:
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = 0;
                 for (j = 0; j < MATRIX_COLS; j++) {
@@ -185,7 +185,7 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
             }
             break;
 
-        case CheckFrequency_SynchronousVolatileEncoding:
+        case CheckFrequency_VolatileEncoding:
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = thisXOR = 0;
                 for (j = 0; j < MATRIX_COLS; j++) {
@@ -264,7 +264,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
     SetThreadAffinity(_thread_id);
 
     switch (checkFrequency) {
-        case CheckFrequency_SynchronousVolatile:
+        case CheckFrequency_Volatile:
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = 0;
                 for (j = 0; j < MATRIX_COLS; j++) {
@@ -274,6 +274,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                     if (thisValue != otherValue) {
                         // des-sync of the queue
                         if(otherValue == ALREADY_CONSUMED) {
+                            //consumerCount++;
                             do{
                                 asm("pause");
                             }
@@ -304,7 +305,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
             }
             break;
 
-        case CheckFrequency_SynchronousVolatileEncoding:
+        case CheckFrequency_VolatileEncoding:
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = thisXOR = 0;
                 for (j = 0; j < MATRIX_COLS; j++) {
@@ -466,6 +467,7 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
         case QueueType_SimpleSync:
             simpleSyncQueue = SimpleSyncQueue_Init();
             _start_routine = Vector_Matrix_SimpleSyncQueue_Consumer;
+//            _start_routine = Vector_Matrix_SimpleSyncQueue_Producer;
             break;
         default: break;
     }
@@ -489,6 +491,7 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
             break;
         case QueueType_SimpleSync:
             Vector_Matrix_SimpleSyncQueue_Producer((void *) (int64_t)producerCore);
+//            Vector_Matrix_SimpleSyncQueue_Consumer((void *) (int64_t)producerCore);
             break;
         default: break;
     }
@@ -502,18 +505,16 @@ double baseLineMean;
 
 void Vector_Matrix_MultAux(ExecMode executionMode) {
     int i, n;
-    double times[NUM_RUNS], meanTime = 0, sd, meanConWait = 0, meanProWait = 0;
+    double times[NUM_RUNS], meanTime = 0, sd, meanConWait = 0, meanProWait = 0, milliseconds_elapsed;
+    struct timespec start, finish;
     long long matrixSum = 0;
-    GTimer *timer;
-    gulong fractional_part;
-    gdouble milliseconds_elapsed;
     char queueTypeStr[30];
     char checkFrequencyStr[60];
     char executionModeStr[60];
 
     for(n = 0; n < NUM_RUNS; n++) {
         consumerCount = producerCount = 0;
-        timer = g_timer_new();
+        clock_gettime(CLOCK_MONOTONIC, &start);
         switch (executionMode) {
             case ExeMode_notReplicated:
                 Vector_Matrix_NotReplicated();
@@ -530,12 +531,10 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
             default: break;
         }
 
-        g_timer_stop(timer);
-        fractional_part = 0;
-        milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
+        clock_gettime(CLOCK_MONOTONIC, &finish);
+        milliseconds_elapsed = (finish.tv_sec - start.tv_sec + (finish.tv_nsec - start.tv_nsec) / 1000000000.0) * 1000;
         times[n] = milliseconds_elapsed;
         meanTime += milliseconds_elapsed;
-        g_timer_destroy(timer);
         meanConWait += consumerCount;
         meanProWait += producerCount;
 
@@ -556,8 +555,8 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
 
         THREAD_UTILS_DestroyThreads();
 
-        printf("Elapsed millisenconds: %f Matrix Sum: %lld ... Consumer waiting: %ld ... Producer waiting: %ld\n",
-               milliseconds_elapsed, matrixSum, consumerCount, producerCount);
+        printf("Elapsed millisenconds: %f, Matrix Sum: %lld ... Consumer waiting: %ld ... Producer waiting: %ld\n",
+               milliseconds_elapsed,  matrixSum, consumerCount, producerCount);
     }
 
     meanTime /= NUM_RUNS;
@@ -599,10 +598,10 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
         case CheckFrequency_SynchronousQueue:
             sprintf(checkFrequencyStr, "checking synchronously with the queue");
             break;
-        case CheckFrequency_SynchronousVolatile:
+        case CheckFrequency_Volatile:
             sprintf(checkFrequencyStr, "checking synchronously volatile stores");
             break;
-        case CheckFrequency_SynchronousVolatileEncoding:
+        case CheckFrequency_VolatileEncoding:
             sprintf(checkFrequencyStr, "checking synchronously volatile stores encoding");
             break;
         default: break;
@@ -639,14 +638,14 @@ void Vector_Matrix_Mult(int useHyperThread) {
     // ----------------- SIMPLE SYNC QUEUE -----------------
 //    printf("--------------- Simple Sync Queue Info, Size: %d \n\n", SIMPLE_SYNC_QUEUE_SIZE);
     Global_SetQueueType(QueueType_SimpleSync);
-//    Global_SetCheckFrequency(CheckFrequency_SynchronousVolatile);
-//
-//    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
-//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+    Global_SetCheckFrequency(CheckFrequency_Volatile);
 
-    Global_SetCheckFrequency(CheckFrequency_SynchronousVolatileEncoding);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads);
     Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+
+//    Global_SetCheckFrequency(CheckFrequency_VolatileEncoding);
+//    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
+//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 
     for(i = 0; i < MATRIX_ROWS; i++){
         free(matrix[i]);

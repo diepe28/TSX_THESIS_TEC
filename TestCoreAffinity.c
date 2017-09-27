@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <math.h>
-#include <glib.h>
+//#include <glib.h>
 
 
 __thread int __thread_id;
@@ -75,53 +75,52 @@ void * thread_affinity_test(void* arg) {
 }
 
 void CoreAffinity_View(int numThreads, int withHyperThread){
-
-    int i, err;
-    void * _start_routine = &thread_affinity_test;
-    long long totalResult = 0;
-    useHyperThread = withHyperThread;
-
-    THREAD_UTILS_SetNumThreads(numThreads);
-    THREAD_UTILS_CreateThreads();
-    results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
-
-    // random values
-    for(i = 0; i < NUM_VALUES; i++){
-        values[i] = rand() % 10000;
-        //values[i] = 2;
-    }
-
-    GTimer *timer = g_timer_new();
-
-    // Creates THREAD_UTILS_NUM_THREADS-1 threads, starts at 1 because of the main thread
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++){
-        err = pthread_create(THREAD_UTILS_Threads[i], NULL, _start_routine, (void*)(int64_t)i);
-        if(err){
-            fprintf(stderr, "Failed to create thread %d\n", i);
-            exit(1);
-        }
-    }
-
-    // Executes the routine in main thread
-    thread_affinity_test((void*)0);
-
-    // Waits for the THREAD_UTILS_NUM_THREADS other threads
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
-        pthread_join(*THREAD_UTILS_Threads[i], NULL);
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
-    //gdouble milliseconds_elapsed = seconds_elapsed * 1000;
-    g_timer_destroy(timer);
-
-    for (i = 0; i < THREAD_UTILS_NUM_THREADS; i++)
-        totalResult += results[i];
-
-    free(results);
-    THREAD_UTILS_DestroyThreads();
-
-    printf("The final result is: %lld... total number of seconds %f\n", totalResult, seconds_elapsed);
+//    int i, err;
+//    void * _start_routine = &thread_affinity_test;
+//    long long totalResult = 0;
+//    useHyperThread = withHyperThread;
+//
+//    THREAD_UTILS_SetNumThreads(numThreads);
+//    THREAD_UTILS_CreateThreads();
+//    results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
+//
+//    // random values
+//    for(i = 0; i < NUM_VALUES; i++){
+//        values[i] = rand() % 10000;
+//        //values[i] = 2;
+//    }
+//
+//    GTimer *timer = g_timer_new();
+//
+//    // Creates THREAD_UTILS_NUM_THREADS-1 threads, starts at 1 because of the main thread
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++){
+//        err = pthread_create(THREAD_UTILS_Threads[i], NULL, _start_routine, (void*)(int64_t)i);
+//        if(err){
+//            fprintf(stderr, "Failed to create thread %d\n", i);
+//            exit(1);
+//        }
+//    }
+//
+//    // Executes the routine in main thread
+//    thread_affinity_test((void*)0);
+//
+//    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+//        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+//    //gdouble milliseconds_elapsed = seconds_elapsed * 1000;
+//    g_timer_destroy(timer);
+//
+//    for (i = 0; i < THREAD_UTILS_NUM_THREADS; i++)
+//        totalResult += results[i];
+//
+//    free(results);
+//    THREAD_UTILS_DestroyThreads();
+//
+//    printf("The final result is: %lld... total number of seconds %f\n", totalResult, seconds_elapsed);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -267,82 +266,82 @@ void thread_task_hyper_replicated(void* arg) {
 
 void CoreAffinity_Replication_Test(ExecutionType executionType){
 
-    int i, err, numThreads;
-    void * _start_routine;
-    double totalResult = 0;
-
-    // random values
-    for(i = 0; i < NUM_VALUES; i++){
-        values[i] = rand() % 1000000;
-    }
-
-    useHyperThread = 0;
-    switch (executionType){
-        case normal:
-            numThreads = 1;
-            _start_routine = &thread_task_normal;
-            break;
-        case normallyReplicated:
-            numThreads = 2;
-            _start_routine = &thread_task_normally_replicated;
-            break;
-        case normallyReplicatedWithHT:
-            numThreads = 4;
-            _start_routine = &thread_task_normally_replicated;
-            break;
-        case hyperReplicated:
-            numThreads = 4;
-            barrierInit();
-            _start_routine = &thread_task_hyper_replicated;
-            break;
-    }
-
-    THREAD_UTILS_SetNumThreads(numThreads);
-    THREAD_UTILS_CreateThreads();
-    results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
-
-    GTimer *timer = g_timer_new();
-
-    // Creates THREAD_UTILS_NUM_THREADS-1 threads, starts at 1 because of the main thread
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++){
-        err = pthread_create(THREAD_UTILS_Threads[i], NULL, _start_routine, (void*)(int64_t)i);
-        if(err){
-            fprintf(stderr, "Failed to create thread %d\n", i);
-            exit(1);
-        }
-    }
-
-    // Executes the routine in main thread
-    switch (executionType){
-        case normal:
-            thread_task_normal(0);
-            break;
-        case normallyReplicated:
-            thread_task_normally_replicated(0);
-            break;
-        case normallyReplicatedWithHT:
-            thread_task_normally_replicated(0);
-            break;
-        case hyperReplicated:
-            thread_task_hyper_replicated(0);
-            break;
-    }
-
-    // Waits for the THREAD_UTILS_NUM_THREADS other threads
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
-        pthread_join(*THREAD_UTILS_Threads[i], NULL);
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
-    //gdouble milliseconds_elapsed = seconds_elapsed * 1000;
-    g_timer_destroy(timer);
-
-    for (i = 0; i < THREAD_UTILS_NUM_THREADS; i++)
-        totalResult += results[i];
-
-    free(results);
-    THREAD_UTILS_DestroyThreads();
-
-    printf("The final result is: %f... total number of seconds %f\n", totalResult, seconds_elapsed);
+//    int i, err, numThreads;
+//    void * _start_routine;
+//    double totalResult = 0;
+//
+//    // random values
+//    for(i = 0; i < NUM_VALUES; i++){
+//        values[i] = rand() % 1000000;
+//    }
+//
+//    useHyperThread = 0;
+//    switch (executionType){
+//        case normal:
+//            numThreads = 1;
+//            _start_routine = &thread_task_normal;
+//            break;
+//        case normallyReplicated:
+//            numThreads = 2;
+//            _start_routine = &thread_task_normally_replicated;
+//            break;
+//        case normallyReplicatedWithHT:
+//            numThreads = 4;
+//            _start_routine = &thread_task_normally_replicated;
+//            break;
+//        case hyperReplicated:
+//            numThreads = 4;
+//            barrierInit();
+//            _start_routine = &thread_task_hyper_replicated;
+//            break;
+//    }
+//
+//    THREAD_UTILS_SetNumThreads(numThreads);
+//    THREAD_UTILS_CreateThreads();
+//    results = (malloc(sizeof(double) * THREAD_UTILS_GetNumThreads()));
+//
+//    GTimer *timer = g_timer_new();
+//
+//    // Creates THREAD_UTILS_NUM_THREADS-1 threads, starts at 1 because of the main thread
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++){
+//        err = pthread_create(THREAD_UTILS_Threads[i], NULL, _start_routine, (void*)(int64_t)i);
+//        if(err){
+//            fprintf(stderr, "Failed to create thread %d\n", i);
+//            exit(1);
+//        }
+//    }
+//
+//    // Executes the routine in main thread
+//    switch (executionType){
+//        case normal:
+//            thread_task_normal(0);
+//            break;
+//        case normallyReplicated:
+//            thread_task_normally_replicated(0);
+//            break;
+//        case normallyReplicatedWithHT:
+//            thread_task_normally_replicated(0);
+//            break;
+//        case hyperReplicated:
+//            thread_task_hyper_replicated(0);
+//            break;
+//    }
+//
+//    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+//        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+//    //gdouble milliseconds_elapsed = seconds_elapsed * 1000;
+//    g_timer_destroy(timer);
+//
+//    for (i = 0; i < THREAD_UTILS_NUM_THREADS; i++)
+//        totalResult += results[i];
+//
+//    free(results);
+//    THREAD_UTILS_DestroyThreads();
+//
+//    printf("The final result is: %f... total number of seconds %f\n", totalResult, seconds_elapsed);
 }

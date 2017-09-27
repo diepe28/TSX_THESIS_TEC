@@ -37,37 +37,37 @@ void* PingPong(void * arg){
 }
 
 void HyperThreads_PingPongTest(int useHyperThread) {
-    int i, err, numThreads;
-    void *_start_routine = &PingPong;
-
-    numThreads = 2;
-    THREAD_UTILS_SetNumThreads(numThreads);
-    THREAD_UTILS_CreateThreads();
-
-    GTimer *timer = g_timer_new();
-
-    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
-                         (void*) (int64_t) ((useHyperThread) ? 2 : 1));
-
-    if (err) {
-        fprintf(stderr, "Failed to create thread\n");
-        exit(1);
-    }
-
-    PingPong(0);
-
-    // Waits for the THREAD_UTILS_NUM_THREADS other threads
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
-        pthread_join(*THREAD_UTILS_Threads[i], NULL);
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
-    g_timer_destroy(timer);
-
-    THREAD_UTILS_DestroyThreads();
-
-    printf("Total number of seconds %f\n", seconds_elapsed);
+//    int i, err, numThreads;
+//    void *_start_routine = &PingPong;
+//
+//    numThreads = 2;
+//    THREAD_UTILS_SetNumThreads(numThreads);
+//    THREAD_UTILS_CreateThreads();
+//
+//    GTimer *timer = g_timer_new();
+//
+//    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+//                         (void*) (int64_t) ((useHyperThread) ? 2 : 1));
+//
+//    if (err) {
+//        fprintf(stderr, "Failed to create thread\n");
+//        exit(1);
+//    }
+//
+//    PingPong(0);
+//
+//    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+//        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble seconds_elapsed = g_timer_elapsed(timer, &fractional_part);
+//    g_timer_destroy(timer);
+//
+//    THREAD_UTILS_DestroyThreads();
+//
+//    printf("Total number of seconds %f\n", seconds_elapsed);
 }
 
 int dummyFunc(long value){
@@ -123,107 +123,107 @@ void TestQueue_ThreadConsumerOptimal(void * arg) {
 }
 
 double HyperThreads_QueueTestReplicatedOptimally() {
-    int err, numThreads;
-    void *_start_routine = &TestQueue_ThreadConsumerOptimal;
-    long i;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
-
-    bool useHyperThread = false;
-    numThreads = 2;
-
-    THREAD_UTILS_SetNumThreads(numThreads);
-    THREAD_UTILS_CreateThreads();
-
-    GTimer *timer = g_timer_new();
-
-    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
-                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
-
-    if (err) {
-        fprintf(stderr, "Failed to create thread %d\n", 1);
-        exit(1);
-    }
-
-
-    TestQueue_ThreadProducerOptimal(0);
-
-    // Waits for the THREAD_UTILS_NUM_THREADS other threads
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
-        pthread_join(*THREAD_UTILS_Threads[i], NULL);
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
-    g_timer_destroy(timer);
-
-    THREAD_UTILS_DestroyThreads();
-
-    if(producerResult == consumerResult)
-        printf("Total Result: %ld--- number of milliseconds %f\n", producerResult, milliseconds_elapsed);
-    return milliseconds_elapsed;
+//    int err, numThreads;
+//    void *_start_routine = &TestQueue_ThreadConsumerOptimal;
+//    long i;
+//
+//    // random values
+//    for (i = 0; i < NUM_VALUES; i++) {
+//        values[i] = rand() % 1000000;
+//    }
+//
+//    bool useHyperThread = false;
+//    numThreads = 2;
+//
+//    THREAD_UTILS_SetNumThreads(numThreads);
+//    THREAD_UTILS_CreateThreads();
+//
+//    GTimer *timer = g_timer_new();
+//
+//    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+//                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
+//
+//    if (err) {
+//        fprintf(stderr, "Failed to create thread %d\n", 1);
+//        exit(1);
+//    }
+//
+//
+//    TestQueue_ThreadProducerOptimal(0);
+//
+//    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+//        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
+//    g_timer_destroy(timer);
+//
+//    THREAD_UTILS_DestroyThreads();
+//
+//    if(producerResult == consumerResult)
+//        printf("Total Result: %ld--- number of milliseconds %f\n", producerResult, milliseconds_elapsed);
+//    return milliseconds_elapsed;
 }
 
 double HyperThreads_SameThreadReplicated(){
-    long i, v1, v2,  result = 0;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
-
-    GTimer *timer = g_timer_new();
-
-    for (i = 0; i < NUM_VALUES; i++){
-        v1 = CalcFunction(i, values[i]);
-        v2 = CalcFunction(i, values[i]);
-
-        if(v1 != v2){
-            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], v1, v2);
-            exit(1);
-        }
-
-        result += v1;
-    }
-
-    producerResult = result;
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
-    g_timer_destroy(timer);
-
-    printf("Total Result: %ld --- number of milliseconds %f \n", producerResult, milliseconds_elapsed );
-    return milliseconds_elapsed ;
+//    long i, v1, v2,  result = 0;
+//
+//    // random values
+//    for (i = 0; i < NUM_VALUES; i++) {
+//        values[i] = rand() % 1000000;
+//    }
+//
+//    GTimer *timer = g_timer_new();
+//
+//    for (i = 0; i < NUM_VALUES; i++){
+//        v1 = CalcFunction(i, values[i]);
+//        v2 = CalcFunction(i, values[i]);
+//
+//        if(v1 != v2){
+//            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld, the value is %d !!!! %ld vs %ld \n\n\n\n", i, values[i], v1, v2);
+//            exit(1);
+//        }
+//
+//        result += v1;
+//    }
+//
+//    producerResult = result;
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
+//    g_timer_destroy(timer);
+//
+//    printf("Total Result: %ld --- number of milliseconds %f \n", producerResult, milliseconds_elapsed );
+//    return milliseconds_elapsed ;
 }
 
 double HyperThreads_QueueTestNotReplicated() {
-    long i, auxValue, result = 0;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-    }
-
-    GTimer *timer = g_timer_new();
-
-    for (i = 0; i < NUM_VALUES; i++){
-        auxValue = CalcFunction(i, values[i]);
-        result += auxValue;
-    }
-
-    producerResult = result;
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
-    g_timer_destroy(timer);
-
-    printf("Total Result: %ld --- number of milliseconds %f \n", producerResult, milliseconds_elapsed);
-    return milliseconds_elapsed;
+//    long i, auxValue, result = 0;
+//
+//    // random values
+//    for (i = 0; i < NUM_VALUES; i++) {
+//        values[i] = rand() % 1000000;
+//    }
+//
+//    GTimer *timer = g_timer_new();
+//
+//    for (i = 0; i < NUM_VALUES; i++){
+//        auxValue = CalcFunction(i, values[i]);
+//        result += auxValue;
+//    }
+//
+//    producerResult = result;
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
+//    g_timer_destroy(timer);
+//
+//    printf("Total Result: %ld --- number of milliseconds %f \n", producerResult, milliseconds_elapsed);
+//    return milliseconds_elapsed;
 }
 
 /// The next 3 pairs of methods are the same except the queue they use. It could have been a generic method that makes
@@ -578,86 +578,86 @@ void TestSectionQueue_Consumer(void *arg){
 }
 
 double HyperThreads_QueueTestReplicated(int useHyperThread) {
-    int err, numThreads;
-    void *_start_routine;
-    long i, correctResult = 0;
-
-    // random values
-    for (i = 0; i < NUM_VALUES; i++) {
-        values[i] = rand() % 1000000;
-        correctResult += CalcFunction(i, values[i]);
-    }
-
-    consumerCount = producerCount = 0;
-
-    switch (queueType) {
-        case QueueType_Simple:
-            simpleQueue = SimpleQueue_Init();
-            _start_routine = &TestSimpleQueue_Consumer;
-            break;
-
-        case QueueType_Section:
-            sectionQueue = SectionQueue_Init();
-            _start_routine = &TestSectionQueue_Consumer;
-            break;
-
-        case QueueType_lynxq:
-            lynxQ1 = queue_init(LYNXQ_QUEUE_SIZE);
-            _start_routine = &TestLynxQueue_Consumer;
-            break;
-    }
-
-    GTimer *timer = g_timer_new();
-
-    numThreads = 2;
-
-    THREAD_UTILS_SetNumThreads(numThreads);
-    THREAD_UTILS_CreateThreads();
-
-    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
-                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
-
-    if (err) {
-        fprintf(stderr, "Failed to create thread %d\n", 1);
-        exit(1);
-    }
-
-    switch (queueType){
-        case QueueType_Simple:
-            TestSimpleQueue_Producer(0);
-            break;
-        case QueueType_Section:
-            TestSectionQueue_Producer(0);
-            break;
-        case QueueType_lynxq:
-            TestLynxQueue_Producer(0);
-            break;
-    }
-
-    // Waits for the THREAD_UTILS_NUM_THREADS other threads
-    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
-        pthread_join(*THREAD_UTILS_Threads[i], NULL);
-
-    g_timer_stop(timer);
-    gulong fractional_part = 0;
-    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
-    g_timer_destroy(timer);
-
-    SimpleSyncQueue_Destroy(&simpleSyncQueue);
-
-    THREAD_UTILS_DestroyThreads();
-    if(lynxQ1) {
-        lynx_queue_print_numbers();
-        queue_finalize(lynxQ1);
-        free(lynxQ1);
-        lynxQ1 = NULL;
-    }
-
-    if(producerResult == consumerResult && producerResult == correctResult)
-        printf("Total Result: %ld --- produced %ld consumed %ld --- number of milliseconds %f\n", producerResult , producerCount, consumerCount, milliseconds_elapsed);
-    else
-        printf("Results are different, something happened... %ld vs %ld vs %ld \n", producerResult, consumerResult, correctResult);
-    return milliseconds_elapsed;
+//    int err, numThreads;
+//    void *_start_routine;
+//    long i, correctResult = 0;
+//
+//    // random values
+//    for (i = 0; i < NUM_VALUES; i++) {
+//        values[i] = rand() % 1000000;
+//        correctResult += CalcFunction(i, values[i]);
+//    }
+//
+//    consumerCount = producerCount = 0;
+//
+//    switch (queueType) {
+//        case QueueType_Simple:
+//            simpleQueue = SimpleQueue_Init();
+//            _start_routine = &TestSimpleQueue_Consumer;
+//            break;
+//
+//        case QueueType_Section:
+//            sectionQueue = SectionQueue_Init();
+//            _start_routine = &TestSectionQueue_Consumer;
+//            break;
+//
+//        case QueueType_lynxq:
+//            lynxQ1 = queue_init(LYNXQ_QUEUE_SIZE);
+//            _start_routine = &TestLynxQueue_Consumer;
+//            break;
+//    }
+//
+//    GTimer *timer = g_timer_new();
+//
+//    numThreads = 2;
+//
+//    THREAD_UTILS_SetNumThreads(numThreads);
+//    THREAD_UTILS_CreateThreads();
+//
+//    err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine,
+//                         (void *) (int64_t) ((useHyperThread) ? 2 : 1));
+//
+//    if (err) {
+//        fprintf(stderr, "Failed to create thread %d\n", 1);
+//        exit(1);
+//    }
+//
+//    switch (queueType){
+//        case QueueType_Simple:
+//            TestSimpleQueue_Producer(0);
+//            break;
+//        case QueueType_Section:
+//            TestSectionQueue_Producer(0);
+//            break;
+//        case QueueType_lynxq:
+//            TestLynxQueue_Producer(0);
+//            break;
+//    }
+//
+//    // Waits for the THREAD_UTILS_NUM_THREADS other threads
+//    for (i = 1; i < THREAD_UTILS_NUM_THREADS; i++)
+//        pthread_join(*THREAD_UTILS_Threads[i], NULL);
+//
+//    g_timer_stop(timer);
+//    gulong fractional_part = 0;
+//    gdouble milliseconds_elapsed = g_timer_elapsed(timer, &fractional_part) * 1000;
+//    g_timer_destroy(timer);
+//
+//    SimpleSyncQueue_Destroy(&simpleSyncQueue);
+//
+//    THREAD_UTILS_DestroyThreads();
+//    if(lynxQ1) {
+//        lynx_queue_print_numbers();
+//        queue_finalize(lynxQ1);
+//        free(lynxQ1);
+//        lynxQ1 = NULL;
+//    }
+//
+//    if(producerResult == consumerResult && producerResult == correctResult)
+//        printf("Total Result: %ld --- produced %ld consumed %ld --- number of milliseconds %f\n", producerResult , producerCount, consumerCount, milliseconds_elapsed);
+//    else
+//        printf("Results are different, something happened... %ld vs %ld vs %ld \n", producerResult, consumerResult, correctResult);
+//    return milliseconds_elapsed;
 }
 
 void HyperThreads_QueueTest(ExecMode execMode){

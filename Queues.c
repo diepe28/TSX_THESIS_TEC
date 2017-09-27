@@ -121,13 +121,6 @@ void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value){
         //producerCount++;
         //pthread_yield();
         //int lastEnqPtr = this->enqPtr == 0? SIMPLE_SYNC_QUEUE_SIZE -1 : this->enqPtr -1;
-
-        //while(this->content[lastEnqPtr] != ALREADY_CONSUMED)
-        //{
-            //pthread_yield();
-            //pthread_yield();
-            //usleep(2);
-        //}
     }
 
     this->content[this->enqPtr] = value;
