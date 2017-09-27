@@ -15,7 +15,6 @@ int sharedValue = 0;
 extern SectionQueue sectionQueue;
 extern SimpleQueue simpleQueue;
 extern SimpleSyncQueue simpleSyncQueue;
-extern lynxQ_t lynxQ1;
 
 extern CheckFrequency checkFrequency;
 extern QueueType queueType;
@@ -229,126 +228,6 @@ double HyperThreads_QueueTestNotReplicated() {
 /// The next 3 pairs of methods are the same except the queue they use. It could have been a generic method that makes
 /// the choice of which queue to use but that would be more complex and probably add ifs and elses..
 
-///// Lynx Queue /////
-
-void TestLynxQueue_Producer(void *arg) {
-    _my_thread_id = (int) (int64_t) arg;
-    long i = 0, calcValue, result = 0, xorMine = 0;
-    long auxValues[MODULO];
-    int residue = 0, j, groupLimit = MODULO -1;
-
-    SetThreadAffinity(_my_thread_id);
-
-    switch (checkFrequency) {
-        case CheckFrequency_everyTime:
-            for (i = 0; i < NUM_VALUES; i++) {
-                calcValue = CalcFunction(i, values[i]);
-                result += calcValue;
-                queue_push_long(lynxQ1, calcValue);
-            }
-            queue_push_done(lynxQ1);
-            break;
-
-        case CheckFrequency_eachModuloTimes:
-            for (i = 0; i < NUM_VALUES; i++) {
-                auxValues[residue] = CalcFunction(i, values[i]);
-                result += auxValues[residue];
-
-                if (residue++ == groupLimit) {
-                    for (j = 0; j < MODULO; j++) {
-                        queue_push_long(lynxQ1, auxValues[j]);
-                    }
-                    residue = 0;
-                }
-            }
-            queue_push_done(lynxQ1);
-            break;
-
-        case CheckFrequency_Encoding:
-            for (i = 0; i < NUM_VALUES; i++) {
-                calcValue = CalcFunction(i, values[i]);
-                result += calcValue;
-                xorMine ^= calcValue;
-
-                if (residue++ == groupLimit) {
-                    queue_push_long(lynxQ1, xorMine);
-                    xorMine = residue = 0;
-                }
-            }
-            queue_push_done(lynxQ1);
-            break;
-    }
-
-    producerResult = result;
-}
-
-void TestLynxQueue_Consumer(void *arg){
-    _my_thread_id = (int) (int64_t) arg;
-    long i = 0, auxValue, otherValue, result = 0;
-    long auxValues[MODULO], xorResultMine = 0, xorResultT1;
-    int residue = 0, j, groupLimit = MODULO -1;
-
-    SetThreadAffinity(_my_thread_id);
-
-    /* Busy wait until pop thread is ready to start */
-    queue_busy_wait_pop_ready(lynxQ1);
-
-    switch(checkFrequency) {
-        case CheckFrequency_everyTime:
-            for (i = 0; i < NUM_VALUES; i++) {
-                auxValue = CalcFunction(i, values[i]);
-                //otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
-
-                if (auxValue != otherValue) {
-                    printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
-                    exit(1);
-                }
-                result += otherValue;
-            }
-            queue_pop_done(lynxQ1);
-            break;
-
-        case CheckFrequency_eachModuloTimes:
-            for (i = 0; i < NUM_VALUES; i++) {
-                auxValues[residue] = CalcFunction(i, values[i]);
-
-                if (residue++ == groupLimit) {
-                    for (j = 0; j < MODULO; j++) {
-                        //otherValue = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
-                        if (auxValues[j] != otherValue) {
-                            printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
-                            exit(1);
-                        }
-                        result += otherValue;
-                    }
-                    queue_pop_done(lynxQ1);
-                    residue = 0;
-                }
-            }
-            break;
-
-        case CheckFrequency_Encoding:
-            for (i = 0; i < NUM_VALUES; i++) {
-                auxValue = CalcFunction(i, values[i]);
-                xorResultMine ^= auxValue;
-
-                result += auxValue;
-
-                if (residue++ == groupLimit) {
-                    //xorResultT1 = queue_pop_long(lynxQ1); // unless there are optimization this causes a compile error
-                    if (xorResultT1 != xorResultMine) {
-                        printf("\n\n\n\n AN ERROR WAS FOUND in iteration %ld \n\n\n", i);
-                        exit(1);
-                    }
-                    xorResultMine = residue = 0;
-                }
-            }
-            queue_pop_done(lynxQ1);
-            break;
-    }
-
-    consumerResult = result;
-}
 
 ///// Simple Queue /////
 void TestSimpleQueue_Producer(void *arg) {

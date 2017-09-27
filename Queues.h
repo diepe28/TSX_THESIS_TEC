@@ -2,16 +2,21 @@
 // Created by diego on 27/07/17.
 //
 
+
 #ifndef TSXPROJECT_SIMPLEQUEUE_H
 #define TSXPROJECT_SIMPLEQUEUE_H
 
+#define __USE_GNU 1
+#define _GNU_SOURCE
+
+#include <sched.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <errno.h>
 #include <semaphore.h>
-#include "lynxq.h"
+#include <pthread.h>
+#include <stdlib.h>
 #include "rtm.h"
-#include "pcqueue.h"
 
 #define SIMPLE_QUEUE_MAX_ELEMENTS 2048
 
@@ -115,7 +120,6 @@ SimpleSyncQueue SimpleSyncQueue_Destroy(SimpleSyncQueue* this);
 SectionQueue sectionQueue;
 SimpleQueue simpleQueue;
 SimpleSyncQueue simpleSyncQueue;
-lynxQ_t lynxQ1;
 
 CheckFrequency checkFrequency;
 QueueType queueType;

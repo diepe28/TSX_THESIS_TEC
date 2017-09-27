@@ -24,7 +24,7 @@ int main(int argc, char **argv){
 /*
  * Main memory is already protected. []
 
-Hyper-threads vs different cores, not against threads, do not mess with the concept of already known thread.
+Hyper-threads vs different cores, not against threads, do not mess witbuenoh the concept of already known thread.
 
 The objectives are what should go in the beggining. Not what I wrote as the main contributions...
 
@@ -38,7 +38,7 @@ More general comment, at the beggining of each chapter, is good to have a short 
 
 They ressemble DAFT, the figures. Mention that.
 
-Correcting soft errors, it looks like is not linked. Just say either Triple, more consice about the checkpointing, dont mention error detection again, I would not say since transient fault the cost of recuperating is not tipically the problem, checkpointing the fact of keeping the checkpoint is costly, you have to save... maybe exactly not the recovery but to keep the checkpoint.
+Correcting soft errors, it looks like is not linked. Just say either Triple, more concise about the checkpointing, dont mention error detection again, I would not say since transient fault the cost of recuperating is not tipically the problem, checkpointing the fact of keeping the checkpoint is costly, you have to save... maybe exactly not the recovery but to keep the checkpoint.
 
 
 Hyper-thread less details about the number of size of the chip.

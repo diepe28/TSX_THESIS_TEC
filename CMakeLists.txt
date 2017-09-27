@@ -3,7 +3,7 @@
 project(tsxProject C)
 # Set the minimum version of cmake required to build this project
 #cmake_minimum_required(VERSION 3.7)
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.0  )
 
 #set( CMAKE_VERBOSE_MAKEFILE on)
 
@@ -32,10 +32,10 @@ set(CMAKE_C_STANDARD 99)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fgnu-tm")
 
-set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h VectorMatrixMult.c VectorMatrixMult.h Queues.c Queues.h lynxq.h FirstTestHyperThreads.c FirstTestHyperThreads.h pcqueue.h)
+set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h VectorMatrixMult.c VectorMatrixMult.h Queues.c Queues.h FirstTestHyperThreads.c FirstTestHyperThreads.h)
 add_executable(tsxExe ${SOURCE_FILES})
 
 TARGET_LINK_LIBRARIES(tsxExe pthread)
-TARGET_LINK_LIBRARIES(tsxExe capstone)
+# TARGET_LINK_LIBRARIES(tsxExe capstone) # for lynx queue
 
 TARGET_LINK_LIBRARIES(tsxExe m)
