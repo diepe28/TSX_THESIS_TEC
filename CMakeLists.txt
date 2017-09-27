@@ -2,7 +2,8 @@
 # Set the name and the supported language of the project
 project(tsxProject C)
 # Set the minimum version of cmake required to build this project
-cmake_minimum_required(VERSION 3.7)
+#cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.5)
 
 #set( CMAKE_VERBOSE_MAKEFILE on)
 
