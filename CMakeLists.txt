@@ -11,7 +11,7 @@ set(CMAKE_BUILD_TYPE Release) # optimizations, but debuging is not allowed
 #set(CMAKE_BUILD_TYPE Debug) # optimizations, but debuging is not allowed
 
 # Use the package PkgConfig to detect GTK+ headers/library files
-find_package(PkgConfig REQUIRED)
+#find_package(PkgConfig REQUIRED)
 
 # pkg_check_modules(GTK3 REQUIRED gtk+-3.0)
 # Setup CMake to use GTK+, tell the compiler where to    look for headers

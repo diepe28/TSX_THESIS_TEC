@@ -568,9 +568,9 @@ void HyperThreads_QueueTest(ExecMode execMode){
             case ExeMode_replicatedThreads:
                 times[i] += HyperThreads_QueueTestReplicated(0);
                 break;
-            case ExeMode_replicatedHyperThreads:
-                times[i] += HyperThreads_QueueTestReplicated(1);
-                break;
+//            case ExeMode_replicatedHyperThreads:
+//                times[i] += HyperThreads_QueueTestReplicated(1);
+//                break;
         }
         mean += times[i];
     }
@@ -619,9 +619,9 @@ void HyperThreads_QueueTest(ExecMode execMode){
         case ExeMode_replicatedThreads:
             printf("\n---------- Replicated With Threads %s %s: ", queueTypeStr, checkFrequencyStr);
             break;
-        case ExeMode_replicatedHyperThreads:
-            printf("\n---------- Replicated With Hyper-Threads %s %s: ", queueTypeStr, checkFrequencyStr);
-            break;
+//        case ExeMode_replicatedHyperThreads:
+//            printf("\n---------- Replicated With Hyper-Threads %s %s: ", queueTypeStr, checkFrequencyStr);
+//            break;
     }
 
     printf("Mean: %f SD: %f\n\n", mean, sd);
@@ -678,15 +678,15 @@ void HyperThreads_TestAllCombinations(){
     Global_SetCheckFrequency(CheckFrequency_everyTime);
     Global_SetQueueType(QueueType_lynxq);
     HyperThreads_QueueTest(ExeMode_replicatedThreads);
-    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 
     // Every Module Times, lynx Queue
     Global_SetCheckFrequency(CheckFrequency_eachModuloTimes);
     HyperThreads_QueueTest(ExeMode_replicatedThreads);
-    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 
     // Every Modules Times With Encoding, lynx Queue
     Global_SetCheckFrequency(CheckFrequency_Encoding);
     HyperThreads_QueueTest(ExeMode_replicatedThreads);
-    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
+//    HyperThreads_QueueTest(ExeMode_replicatedHyperThreads);
 }

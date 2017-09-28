@@ -25,7 +25,7 @@
 
 #define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
 
-#define SIMPLE_SYNC_QUEUE_SIZE 512
+#define SIMPLE_SYNC_QUEUE_SIZE 1024
 #define ALREADY_CONSUMED -2
 
 #define NUM_RUNS 5
@@ -56,8 +56,7 @@ typedef enum{
     ExeMode_notReplicated,
     ExeMode_replicatedSameThread,
     ExeMode_replicatedThreadsOptimally,
-    ExeMode_replicatedThreads,
-    ExeMode_replicatedHyperThreads,
+    ExeMode_replicatedThreads
 }ExecMode;
 
 typedef struct{

@@ -274,7 +274,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                     if (thisValue != otherValue) {
                         // des-sync of the queue
                         if(otherValue == ALREADY_CONSUMED) {
-                            //consumerCount++;
+                            consumerCount++;
                             do{
                                 asm("pause");
                             }
@@ -417,17 +417,18 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
 // Test Structure
 
 void CreateThreadsWithScheduling(void *_start_routine, int consumerCore){
-    int err = 0;
+    int err = 0, scheduler = SCHED_FIFO;
     pthread_attr_t attr;
     struct sched_param param;
 
+
     // For producer/main thread
-    param.sched_priority = sched_get_priority_max(SCHED_RR);
-    err = pthread_setschedparam(pthread_self(), SCHED_RR, &param);
+    param.sched_priority = sched_get_priority_max(scheduler) - 50;
+    err = pthread_setschedparam(pthread_self(), scheduler, &param);
     if (err != 0) handle_error_en(err, "producer_setschedparam");
 
     // For the consumer thread
-    //param.sched_priority = sched_get_priority_max(SCHED_RR);
+    param.sched_priority += 50;
 
     err = pthread_attr_init(&attr);
     if (err != 0) handle_error_en(err, "consumer pthread_attr_init");
@@ -435,7 +436,7 @@ void CreateThreadsWithScheduling(void *_start_routine, int consumerCore){
     err = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
     if (err != 0) handle_error_en(err, "pthread_attr_setinheritsched");
 
-    err = pthread_attr_setschedpolicy(&attr, SCHED_RR);
+    err = pthread_attr_setschedpolicy(&attr, scheduler);
     if (err != 0) handle_error_en(err, "consumer pthread_attr_setschedpolicy");
 
     err = pthread_attr_setschedparam(&attr, &param);
@@ -449,12 +450,10 @@ void CreateThreadsWithScheduling(void *_start_routine, int consumerCore){
     }
 }
 
-void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
+void Vector_Matrix_ReplicatedThreads(int producerCore, int consumerCore) {
     int err = 0, numThreads;
     void *_start_routine = 0;
     long i = 0;
-    int producerCore = 0;
-    int consumerCore = useHyperThread? producerCore +2 : producerCore +1;;
 
     consumerCount = producerCount = 0;
 
@@ -477,7 +476,7 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
     THREAD_UTILS_SetNumThreads(numThreads);
     THREAD_UTILS_CreateThreads();
 
-    //CreateThreadsWithScheduling(_start_routine, consumerCore);
+//    CreateThreadsWithScheduling(_start_routine, consumerCore);
     err = pthread_create(THREAD_UTILS_Threads[1], NULL, _start_routine, (void *) (int64_t) consumerCore);
 
     if (err) {
@@ -503,7 +502,7 @@ void Vector_Matrix_ReplicatedThreads(int useHyperThread) {
 
 double baseLineMean;
 
-void Vector_Matrix_MultAux(ExecMode executionMode) {
+void Vector_Matrix_MultAux(ExecMode executionMode, int producerCore, int consumerCore) {
     int i, n;
     double times[NUM_RUNS], meanTime = 0, sd, meanConWait = 0, meanProWait = 0, milliseconds_elapsed;
     struct timespec start, finish;
@@ -523,10 +522,7 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
                 Vector_Matrix_ReplicatedSameThread();
                 break;
             case ExeMode_replicatedThreads:
-                Vector_Matrix_ReplicatedThreads(0);
-                break;
-            case ExeMode_replicatedHyperThreads:
-                Vector_Matrix_ReplicatedThreads(1);
+                Vector_Matrix_ReplicatedThreads(producerCore, consumerCore);
                 break;
             default: break;
         }
@@ -539,7 +535,7 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
         meanProWait += producerCount;
 
         matrixSum = 0;
-        if(executionMode == ExeMode_replicatedSameThread || executionMode == ExeMode_replicatedHyperThreads){
+        if(executionMode == ExeMode_replicatedSameThread){
             for(i = 0; i < MATRIX_ROWS; i++){
                 if(producerVectorResult[i] == consumerVectorResult[i])
                     matrixSum += producerVectorResult[i];
@@ -579,9 +575,6 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
         case QueueType_SimpleSync:
             strcpy(queueTypeStr, "SIMPLE SYNC");
             break;
-        case QueueType_lynxq :
-            strcpy(queueTypeStr, "LYNXQ");
-            break;
         default: break;
     }
 
@@ -615,10 +608,7 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
             sprintf(executionModeStr, "Replicated in Same Thread");
             break;
         case ExeMode_replicatedThreads:
-            sprintf(executionModeStr, "Replicated With Threads");
-            break;
-        case ExeMode_replicatedHyperThreads:
-            sprintf(executionModeStr, "Replicated With Hyper-Threads");
+            sprintf(executionModeStr, "Replicated in Threads %d, %d", producerCore, consumerCore);
             break;
         default: break;
     }
@@ -628,11 +618,11 @@ void Vector_Matrix_MultAux(ExecMode executionMode) {
            executionModeStr, queueTypeStr, checkFrequencyStr, meanTime, sd, meanTime / baseLineMean, meanConWait, meanProWait);
 }
 
-void Vector_Matrix_Mult(int useHyperThread) {
+void Vector_Matrix_Mult(int producerCore, int consumerCore) {
     int i;
     Vector_Matrix_Init();
 
-    Vector_Matrix_MultAux(ExeMode_notReplicated);
+    Vector_Matrix_MultAux(ExeMode_notReplicated, 0 , 0);
     //Vector_Matrix_MultAux(ExeMode_replicatedSameThread);
 
     // ----------------- SIMPLE SYNC QUEUE -----------------
@@ -640,12 +630,9 @@ void Vector_Matrix_Mult(int useHyperThread) {
     Global_SetQueueType(QueueType_SimpleSync);
     Global_SetCheckFrequency(CheckFrequency_Volatile);
 
-    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
-    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
+    Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
 
 //    Global_SetCheckFrequency(CheckFrequency_VolatileEncoding);
-//    Vector_Matrix_MultAux(ExeMode_replicatedThreads);
-//    Vector_Matrix_MultAux(ExeMode_replicatedHyperThreads);
 
     for(i = 0; i < MATRIX_ROWS; i++){
         free(matrix[i]);

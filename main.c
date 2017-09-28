@@ -15,9 +15,19 @@
 
 int main(int argc, char **argv){
     srand(time(NULL));
-    int useHyperThread = 1; //atoi(argv[1]) != 0;
+    int producerCore, consumerCore;
 
-    Vector_Matrix_Mult(useHyperThread);
+    if(argc == 3){
+        printf("There are parameters\n");
+        producerCore = atoi(argv[1]);
+        consumerCore = atoi(argv[2]);
+    }else{
+        // using hyper-threads
+        producerCore = 1;
+        consumerCore = 3;
+    }
+
+    Vector_Matrix_Mult(producerCore, consumerCore);
     return 0;
 }
 
@@ -80,4 +90,12 @@ In the hyphotesis, mention the how many cicles it takes to access of level 1 or 
 We dont care, at least for now, of fault injection.
 
 For test methododoly, hpc applications representative, different machines like the ones in Grid 5000, hardware counters.
+
+ If for example the configuration of hyper-threads is not as good as another configuration with different cores... well if is not as good still that different core
+ can be used for another purpose, there are cases where hyper-threads do not help but having a new core will definitely help so if is the same or a bit worse then we
+use that other core for another purpose.
+
+ One idea is to let the producer produce without sync, since there are only a few times (at least with a 1024 queue size) the producer actually has to wait for the
+ consumer. He could write to another place, another queue maybe, when the consumer reads a wrong value if is ALREADY_CONSUMED it waits for the producer but before
+ deciding is a soft error he writes the first value of this other queue, if it is the same
  * */

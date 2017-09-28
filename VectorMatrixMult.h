@@ -10,8 +10,8 @@
 #include "Queues.h"
 //#include <glib.h>
 
-#define MATRIX_COLS 29500
-#define MATRIX_ROWS 29500
+#define MATRIX_COLS 25000
+#define MATRIX_ROWS 25000
 
 int vector[MATRIX_COLS];
 long producerVectorResult[MATRIX_ROWS];
@@ -19,7 +19,7 @@ long consumerVectorResult[MATRIX_ROWS];
 int **matrix;
 
 void Vector_Matrix_Init();
-void Vector_Matrix_Mult(int useHyperThread);
+void Vector_Matrix_Mult(int producerCore, int consumerCore);
 
 void printMatrix(int rows, int cols, long matrix[rows][cols]);
 
