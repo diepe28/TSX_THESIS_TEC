@@ -23,8 +23,6 @@
 #define SECTION_SIZE 1000
 #define NUM_SECTIONS 4
 
-#define LYNXQ_QUEUE_SIZE (1<<21) /* 2MB */
-
 #define SIMPLE_SYNC_QUEUE_SIZE 1024
 #define ALREADY_CONSUMED -2
 
@@ -97,15 +95,17 @@ long SimpleQueue_Dequeue(SimpleQueue* this);
 /////////////// Simple Without Sync Queue ///////////////
 typedef struct{
     //long content[SIMPLE_QUEUE_MAX_ELEMENTS];
-    int deqPtr;
+    volatile int deqPtr;
     double padding0[15];
-    int enqPtr;
+    volatile int enqPtr;
     double padding1[15];
     volatile long* content;
     double padding2[15];
-    volatile int checkState; // 0 not verified, 1 no soft error, 1 soft error
+    volatile int checkState; // 0 not verified, 1 no soft error
     double padding3[15];
     volatile long currentValue;
+    double padding4[15];
+    volatile long content2[SIMPLE_SYNC_QUEUE_SIZE];
 }SimpleSyncQueue;
 
 SimpleSyncQueue SimpleSyncQueue_Init();

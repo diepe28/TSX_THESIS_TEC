@@ -98,4 +98,7 @@ use that other core for another purpose.
  One idea is to let the producer produce without sync, since there are only a few times (at least with a 1024 queue size) the producer actually has to wait for the
  consumer. He could write to another place, another queue maybe, when the consumer reads a wrong value if is ALREADY_CONSUMED it waits for the producer but before
  deciding is a soft error he writes the first value of this other queue, if it is the same
+
+ Try the same idea of not synchronizing but with the consumer...
+ and also try the multi-section queue again...
  * */

@@ -112,30 +112,41 @@ SimpleSyncQueue SimpleSyncQueue_Init(){
     return this;
 }
 
+int extraCounter = 0;
+
+//perhaps only synchronize at the end of the queue via the memory lynx protection mechanism
+
 void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value) {
     int nextEnqPtr = (this->enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
 
-//    while(this->content[nextEnqPtr] != ALREADY_CONSUMED){
-//        asm("pause"); // alone instead of just the busy waiting helps a bit
+    while (this->content[nextEnqPtr] != ALREADY_CONSUMED) {
+        asm("pause"); // alone instead of just the busy waiting helps a bit
 //        producerCount++;
 //
-//        while(this->content[nextEnqPtr] != ALREADY_CONSUMED) {
+//        while (this->content[nextEnqPtr] != ALREADY_CONSUMED) {
 //            asm("pause");
 //        }
 //
 //        break;
-//        //pthread_yield();
-//        //int lastEnqPtr = this->enqPtr == 0? SIMPLE_SYNC_QUEUE_SIZE -1 : this->enqPtr -1;
-//    }
+    }
 
-//    this->content[this->enqPtr] = value;
-//    this->enqPtr = nextEnqPtr;
+    this->content[this->enqPtr] = value;
+    this->enqPtr = nextEnqPtr;
 
-    //if (this->content[nextEnqPtr] == ALREADY_CONSUMED) {
-        this->content[this->enqPtr] = value;
-        this->enqPtr = nextEnqPtr;
+//    start:
+//    if (this->content[nextEnqPtr] == ALREADY_CONSUMED) {
+//        this->content[this->enqPtr] = value;
+//        this->enqPtr = nextEnqPtr;
+//    }else {
+//        while (this->content[nextEnqPtr] != ALREADY_CONSUMED) {
+//            asm("pause");
+//        }
+//        goto start;
+
+//        printf("Produce in extra content: enqPtr: %d value %ld\n", this->enqPtr, value);
+//        producerCount++;
+//        this->content2[extraCounter++] = value;
     //}
-
 }
 
 long SimpleSyncQueue_Dequeue(SimpleSyncQueue* this){
