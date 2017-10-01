@@ -20,10 +20,12 @@
 
 #define SIMPLE_QUEUE_MAX_ELEMENTS 2048
 
+
+
 #define SECTION_SIZE 1000
 #define NUM_SECTIONS 4
 
-#define SIMPLE_SYNC_QUEUE_SIZE 1024
+#define SIMPLE_SYNC_QUEUE_SIZE 8192
 #define ALREADY_CONSUMED -2
 
 #define NUM_RUNS 5
@@ -105,7 +107,7 @@ typedef struct{
     double padding3[15];
     volatile long currentValue;
     double padding4[15];
-    volatile long content2[SIMPLE_SYNC_QUEUE_SIZE];
+    int waiting;
 }SimpleSyncQueue;
 
 SimpleSyncQueue SimpleSyncQueue_Init();

@@ -108,7 +108,7 @@ SimpleSyncQueue SimpleSyncQueue_Init(){
     }
     this.currentValue = ALREADY_CONSUMED;
     this.checkState = 1;
-    this.enqPtr = this.deqPtr = 0;
+    this.enqPtr = this.deqPtr = this.waiting = 0;
     return this;
 }
 
@@ -132,21 +132,6 @@ void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value) {
 
     this->content[this->enqPtr] = value;
     this->enqPtr = nextEnqPtr;
-
-//    start:
-//    if (this->content[nextEnqPtr] == ALREADY_CONSUMED) {
-//        this->content[this->enqPtr] = value;
-//        this->enqPtr = nextEnqPtr;
-//    }else {
-//        while (this->content[nextEnqPtr] != ALREADY_CONSUMED) {
-//            asm("pause");
-//        }
-//        goto start;
-
-//        printf("Produce in extra content: enqPtr: %d value %ld\n", this->enqPtr, value);
-//        producerCount++;
-//        this->content2[extraCounter++] = value;
-    //}
 }
 
 long SimpleSyncQueue_Dequeue(SimpleSyncQueue* this){
@@ -154,6 +139,7 @@ long SimpleSyncQueue_Dequeue(SimpleSyncQueue* this){
 
     if(value != ALREADY_CONSUMED) {
         this->content[this->deqPtr] = ALREADY_CONSUMED;
+        asm volatile("" ::: "memory");
         this->deqPtr = (this->deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
         //consumerCount++;
     }

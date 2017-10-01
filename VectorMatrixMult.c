@@ -106,7 +106,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg);
 void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
     _thread_id = (int) (int64_t) arg;
     long i = 0, j, thisValue, thisXOR, times = 0;
-    int diff, localDeqPtr, newLimit;
+    int diff, localDeqPtr, firstLimit, newLimit;
 
     SetThreadAffinity(_thread_id);
 
@@ -114,51 +114,40 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
 
     switch (checkFrequency) {
         case CheckFrequency_Volatile:
-            // launch consumer thread here
 //            pthread_create(THREAD_UTILS_Threads[1], NULL, (void*) Vector_Matrix_SimpleSyncQueue_Consumer, (void *) (int64_t) 2);
 
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = j = 0;
-                localDeqPtr = simpleSyncQueue.deqPtr;
-
-                newLimit = simpleSyncQueue.enqPtr >= localDeqPtr ?
-                       (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
-                           localDeqPtr - simpleSyncQueue.enqPtr;
+                newLimit = SIMPLE_SYNC_QUEUE_SIZE;
 
                 do {
-                    printf("J %ld newLimit: %d \n", j, newLimit);
-
                     for (; j < newLimit; j++) {
                         thisValue += vector[j] * matrix[i][j];
                         simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
                         simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
                     }
 
-                    // if the consuemr is also waiting
-                    while (abs(simpleSyncQueue.deqPtr - simpleSyncQueue.enqPtr) {
+                    producerCount++;
+
+                    while (simpleSyncQueue.content[simpleSyncQueue.enqPtr] != ALREADY_CONSUMED) {
                         asm("pause");
-                        printf("Enq: %d Deq: %d\n", simpleSyncQueue.enqPtr, localDeqPtr);
-                        sleep(1);
                     }
 
                     localDeqPtr = simpleSyncQueue.deqPtr;
                     diff = simpleSyncQueue.enqPtr >= localDeqPtr ?
-                               (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
-                               localDeqPtr - simpleSyncQueue.enqPtr;
-                    printf("Enq: %d Deq: %d Current diff: %d\n", simpleSyncQueue.enqPtr, localDeqPtr, diff);
-                    newLimit = j + diff;
+                           (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
+                           localDeqPtr - simpleSyncQueue.enqPtr;
+
+                    newLimit += diff - 1;
 
                 } while (newLimit < MATRIX_COLS);
 
-//                printf("After column \n\n");
+                // iterations left
                 for (; j < MATRIX_COLS; j++) {
                     thisValue += vector[j] * matrix[i][j];
                     simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
                     simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
                 }
-
-//                printf("Volatile Store %ld ... \n", i);
-//                sleep(1);
 
                 simpleSyncQueue.currentValue = thisValue;
                 simpleSyncQueue.checkState = 0;
@@ -230,8 +219,6 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
     }
 }
 
-int extraCounter2 = 0;
-
 void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
     _thread_id = (int) (int64_t) arg;
     long i = 0, thisValue, otherValue, otherXOR, thisXOR, times = 0, j;
@@ -250,27 +237,33 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                         // des-sync of the queue
                         if(otherValue == ALREADY_CONSUMED) {
                             //consumerCount++;
+//                            simpleSyncQueue.waiting = 1;
                             do{
                                 asm("pause");
+//                                printf("Consumer waiting ... \n");
+//                                sleep(1);
                             }
                             while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED);
 
+//                            simpleSyncQueue.waiting = 0;
                             otherValue = SimpleSyncQueue_Dequeue(&simpleSyncQueue);
 
                             if (thisValue == otherValue) continue;
                         }
 
-                        printf("\n\n SOFT ERROR DETECTED \n");
+                        printf("\n\n SOFT ERROR DETECTED, %ld vs %ld Producer: %ld -- Consumer: %ld, diff: %ld \n",
+                               thisValue, otherValue, producerCount, consumerCount, producerCount - consumerCount);
                         exit(1);
                     }
                 }
 
+                //printf("Waiting for thisValue: %ld\n", thisValue);
                 while (simpleSyncQueue.checkState == 1){
                     asm("pause");
                 }
 
                 if(thisValue != simpleSyncQueue.currentValue){
-                    printf("\n\n SOFT ERROR DETECTED \n");
+                    printf("\n\n SOFT ERROR IN VOLATILE STORE \n");
                     exit(1);
                 }
 
@@ -465,8 +458,8 @@ void Vector_Matrix_MultAux(ExecMode executionMode, int producerCore, int consume
 
         THREAD_UTILS_DestroyThreads();
 
-        printf("Millisenconds: %f, MatrixSum: %lld ... Consumer: %ld ... Producer: %ld\n",
-               milliseconds_elapsed,  matrixSum, consumerCount, producerCount);
+        printf("Millisenconds: %f, MatrixSum: %lld ... Consumer: %ld ... Producer: %ld Ratio: %f\n",
+               milliseconds_elapsed,  matrixSum, consumerCount, producerCount, ((double) producerCount) / (MATRIX_COLS * MATRIX_ROWS));
     }
 
     meanTime /= NUM_RUNS;
@@ -534,6 +527,7 @@ void Vector_Matrix_Mult(int producerCore, int consumerCore) {
     Global_SetQueueType(QueueType_SimpleSync);
     Global_SetCheckFrequency(CheckFrequency_Volatile);
 
+    //Vector_Matrix_MultAux(ExeMode_replicatedThreads, 0, 1);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
 
 //    Global_SetCheckFrequency(CheckFrequency_VolatileEncoding);
