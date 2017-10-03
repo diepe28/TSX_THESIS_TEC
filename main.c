@@ -15,19 +15,22 @@
 
 int main(int argc, char **argv){
     srand(time(NULL));
-    int producerCore, consumerCore;
+    int producerCoreHT, consumerCoreHT, producerCore, consumerCore;
 
-    if(argc == 3){
+    if(argc == 5){
         printf("There are parameters\n");
         producerCore = atoi(argv[1]);
         consumerCore = atoi(argv[2]);
-    }else{
-        // using hyper-threads
-        producerCore = 1;
-        consumerCore = 3;
+        producerCoreHT = atoi(argv[3]);
+        consumerCoreHT = atoi(argv[4]);
+    }else{ // my machine
+        producerCore = 0;
+        consumerCore = 1;
+        producerCoreHT = 0;
+        consumerCoreHT = 2;
     }
 
-    Vector_Matrix_Mult(producerCore, consumerCore);
+    Vector_Matrix_Mult(producerCore, consumerCore, producerCoreHT, consumerCoreHT);
     return 0;
 }
 

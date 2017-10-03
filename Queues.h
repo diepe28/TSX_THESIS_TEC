@@ -25,7 +25,13 @@
 #define SECTION_SIZE 1000
 #define NUM_SECTIONS 4
 
-#define SIMPLE_SYNC_QUEUE_SIZE 8192
+//#define SIMPLE_SYNC_QUEUE_SIZE 256
+//#define SIMPLE_SYNC_QUEUE_SIZE 512
+#define SIMPLE_SYNC_QUEUE_SIZE 1024
+//#define SIMPLE_SYNC_QUEUE_SIZE 2048
+//#define SIMPLE_SYNC_QUEUE_SIZE 4096
+//#define SIMPLE_SYNC_QUEUE_SIZE 8192
+//#define SIMPLE_SYNC_QUEUE_SIZE 16384
 #define ALREADY_CONSUMED -2
 
 #define NUM_RUNS 5
@@ -38,6 +44,8 @@ typedef enum {
     CheckFrequency_SynchronousTwoVars,
     CheckFrequency_SynchronousQueue,
     CheckFrequency_Volatile,
+    CheckFrequency_VolatileNoSync,
+    CheckFrequency_VolatileNoSyncNoModulo,
     CheckFrequency_VolatileEncoding,
 
     CheckFrequency_everyTime,

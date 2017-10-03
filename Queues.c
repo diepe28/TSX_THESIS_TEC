@@ -112,8 +112,6 @@ SimpleSyncQueue SimpleSyncQueue_Init(){
     return this;
 }
 
-int extraCounter = 0;
-
 //perhaps only synchronize at the end of the queue via the memory lynx protection mechanism
 
 void SimpleSyncQueue_Enqueue(SimpleSyncQueue* this, long value) {
