@@ -100,8 +100,8 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg);
 
 void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
     _thread_id = (int) (int64_t) arg;
-    long i = 0, j, thisValue, thisXOR, times = 0;
-    int localDeqPtr, firstLimit, newLimit, nextEnq;
+    long i = 0, j, thisValue,thisXOR, times = 0;
+    int localDeqPtr, newLimit, nextEnq, firstLimit, timesUnrolledCount, diff;
 
     SetThreadAffinity(_thread_id);
 
@@ -127,8 +127,6 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                         thisValue += vector[j] * matrix[i][j];
                         simpleSyncQueue.content[simpleSyncQueue.enqPtr++] = thisValue;
                     }
-
-                    //producerCount++;
 
                     nextEnq = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
                     while (simpleSyncQueue.content[nextEnq] != ALREADY_CONSUMED) {
@@ -166,28 +164,44 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
         case CheckFrequency_VolatileNoSync:
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = j = 0;
+                // this is one BIG assumption: SIMPLE_SYNC_QUEUE_SIZE < MATRIX_COLS
                 newLimit = SIMPLE_SYNC_QUEUE_SIZE;
 
                 do {
-                    for (; j < newLimit; j++) {
+                    for (; j < newLimit; j += 4) {
                         thisValue += vector[j] * matrix[i][j];
                         simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr +1) % SIMPLE_SYNC_QUEUE_SIZE;
-//                        producerCount++;
+                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+
+                        thisValue += vector[j + 1] * matrix[i][j + 1];
+                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+
+                        thisValue += vector[j + 2] * matrix[i][j + 2];
+                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+
+                        thisValue += vector[j + 3] * matrix[i][j + 3];
+                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
                     }
 
-                    //producerCount++;
-
                     nextEnq = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+
                     while (simpleSyncQueue.content[nextEnq] != ALREADY_CONSUMED) {
                         asm("pause");
                     }
 
                     // diff calculated with current enqPtr
+//                    newLimit += SIMPLE_SYNC_QUEUE_SIZE -
+//                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.deqPtr + simpleSyncQueue.enqPtr) %
+//                                SIMPLE_SYNC_QUEUE_SIZE; // a bit slower than below version
+
                     localDeqPtr = simpleSyncQueue.deqPtr;
-                    newLimit += simpleSyncQueue.enqPtr >= localDeqPtr ?
-                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
-                                localDeqPtr - simpleSyncQueue.enqPtr;
+                    diff = simpleSyncQueue.enqPtr >= localDeqPtr ?
+                           (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
+                           localDeqPtr - simpleSyncQueue.enqPtr;
+                    newLimit += diff - diff % 4;
 
                 } while (newLimit < MATRIX_COLS);
 
@@ -196,7 +210,6 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                     thisValue += vector[j] * matrix[i][j];
                     simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
                     simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr +1) %  SIMPLE_SYNC_QUEUE_SIZE;
-//                    producerCount++;
                 }
 
                 simpleSyncQueue.currentValue = thisValue;
@@ -212,11 +225,58 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
             break;
 
         case CheckFrequency_Volatile:
+//            for (i = 0; i < MATRIX_ROWS; i++) {
+//                thisValue = 0;
+//                for (j = 0; j < MATRIX_COLS; j++) {
+//                    thisValue += vector[j] * matrix[i][j];
+//                    SimpleSyncQueue_Enqueue(&simpleSyncQueue, thisValue);
+//                }
+//
+//                simpleSyncQueue.currentValue = thisValue;
+//                simpleSyncQueue.checkState = 0;
+//
+//                while (simpleSyncQueue.checkState == 0){
+//                    asm("pause");
+//                }
+//
+//                // Pretend Volatile store
+//                producerVectorResult[i] = thisValue;
+//            }
             for (i = 0; i < MATRIX_ROWS; i++) {
-                thisValue = 0;
-                for (j = 0; j < MATRIX_COLS; j++) {
+                thisValue = j = 0;
+                // this is one BIG assumption: SIMPLE_SYNC_QUEUE_SIZE < MATRIX_COLS
+                newLimit = SIMPLE_SYNC_QUEUE_SIZE;
+
+                do {
+                    for (; j < newLimit; j++) {
+                        thisValue += vector[j] * matrix[i][j];
+                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+                    }
+
+                    nextEnq = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+
+                    while (simpleSyncQueue.content[nextEnq] != ALREADY_CONSUMED) {
+                        asm("pause");
+                    }
+
+                    // diff calculated with current enqPtr
+//                    newLimit += SIMPLE_SYNC_QUEUE_SIZE -
+//                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.deqPtr + simpleSyncQueue.enqPtr) %
+//                                SIMPLE_SYNC_QUEUE_SIZE; // a bit slower than below version
+
+                    localDeqPtr = simpleSyncQueue.deqPtr;
+                    newLimit += simpleSyncQueue.enqPtr >= localDeqPtr ?
+                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
+                                localDeqPtr - simpleSyncQueue.enqPtr;
+
+                } while (newLimit < MATRIX_COLS);
+
+                // iterations left
+                for (; j < MATRIX_COLS; j++) {
                     thisValue += vector[j] * matrix[i][j];
-                    SimpleSyncQueue_Enqueue(&simpleSyncQueue, thisValue);
+                    simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                    simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr +1) %  SIMPLE_SYNC_QUEUE_SIZE;
                 }
 
                 simpleSyncQueue.currentValue = thisValue;
@@ -289,6 +349,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                     if (thisValue != otherValue) {
                         // des-sync of the queue
                         if (otherValue == ALREADY_CONSUMED) {
+                            //consumerCount++;
                             do {
                                 asm("pause");
                             } while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED);
@@ -314,7 +375,7 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                     exit(1);
                 }
 
-                // Pretend Volatile Store
+//                // Pretend Volatile Store
                 consumerVectorResult[i] = thisValue;
                 simpleSyncQueue.checkState = 1;
             }
@@ -506,8 +567,9 @@ void Vector_Matrix_MultAux(ExecMode executionMode, int producerCore, int consume
 
         THREAD_UTILS_DestroyThreads();
 
-        printf("Millisenconds: %f, MatrixSum: %lld ... Consumer: %ld ... Producer: %ld Ratio: %f\n",
-               milliseconds_elapsed,  matrixSum, consumerCount, producerCount, ((double) producerCount) / (MATRIX_COLS * MATRIX_ROWS));
+        printf("Millisenconds: %f, MatrixSum: %lld ... Consumer: %ld , Ratio %f --- Producer: %ld Ratio: %f\n",
+               milliseconds_elapsed,  matrixSum, consumerCount, ((double) consumerCount) / (MATRIX_COLS * MATRIX_ROWS),
+                producerCount, ((double) producerCount) / (MATRIX_COLS * MATRIX_ROWS));
     }
 
     meanTime /= NUM_RUNS;
@@ -588,9 +650,9 @@ void Vector_Matrix_Mult(int producerCore, int consumerCore, int producerCoreHT, 
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCoreHT, consumerCoreHT);
 
-    Global_SetCheckFrequency(CheckFrequency_VolatileNoSyncNoModulo);
-    Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
-    Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCoreHT, consumerCoreHT);
+//    Global_SetCheckFrequency(CheckFrequency_VolatileNoSyncNoModulo);
+//    Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
+//    Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCoreHT, consumerCoreHT);
 
 
     for(i = 0; i < MATRIX_ROWS; i++){

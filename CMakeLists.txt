@@ -30,7 +30,7 @@ set(CMAKE_BUILD_TYPE Release) # optimizations, but debuging is not allowed
 
 set(CMAKE_C_STANDARD 99)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fgnu-tm")
+#set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fgnu-tm")
 
 set(SOURCE_FILES main.c TestTSX.c UtilFunctionsTSX.c ThreadUtils.c UtilFunctionsTSX.h ThreadUtils.h TestTSX.h BenchmarkSupport.c BenchmarkSupport.h TestAtomicOps.c TestAtomicOps.h TestCoreAffinity.c TestCoreAffinity.h VectorMatrixMult.c VectorMatrixMult.h Queues.c Queues.h FirstTestHyperThreads.c FirstTestHyperThreads.h)
 add_executable(tsxExe ${SOURCE_FILES})
