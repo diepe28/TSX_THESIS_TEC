@@ -161,91 +161,12 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
             break;
 
 
-        case CheckFrequency_VolatileNoSync:
+        case CheckFrequency_RHT_NoVolatiles:
+            newLimit = SIMPLE_SYNC_QUEUE_SIZE;
+
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = j = 0;
                 // this is one BIG assumption: SIMPLE_SYNC_QUEUE_SIZE < MATRIX_COLS
-                newLimit = SIMPLE_SYNC_QUEUE_SIZE;
-
-                do {
-                    for (; j < newLimit; j += 4) {
-                        thisValue += vector[j] * matrix[i][j];
-                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-
-                        thisValue += vector[j + 1] * matrix[i][j + 1];
-                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-
-                        thisValue += vector[j + 2] * matrix[i][j + 2];
-                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-
-                        thisValue += vector[j + 3] * matrix[i][j + 3];
-                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-                    }
-
-                    nextEnq = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
-
-                    while (simpleSyncQueue.content[nextEnq] != ALREADY_CONSUMED) {
-                        asm("pause");
-                    }
-
-                    // diff calculated with current enqPtr
-//                    newLimit += SIMPLE_SYNC_QUEUE_SIZE -
-//                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.deqPtr + simpleSyncQueue.enqPtr) %
-//                                SIMPLE_SYNC_QUEUE_SIZE; // a bit slower than below version
-
-                    localDeqPtr = simpleSyncQueue.deqPtr;
-                    diff = simpleSyncQueue.enqPtr >= localDeqPtr ?
-                           (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
-                           localDeqPtr - simpleSyncQueue.enqPtr;
-                    newLimit += diff - diff % 4;
-
-                } while (newLimit < MATRIX_COLS);
-
-                // iterations left
-                for (; j < MATRIX_COLS; j++) {
-                    thisValue += vector[j] * matrix[i][j];
-                    simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                    simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr +1) %  SIMPLE_SYNC_QUEUE_SIZE;
-                }
-
-                simpleSyncQueue.currentValue = thisValue;
-                simpleSyncQueue.checkState = 0;
-
-                while (simpleSyncQueue.checkState == 0){
-                    asm("pause");
-                }
-
-                // Pretend Volatile store
-                producerVectorResult[i] = thisValue;
-            }
-            break;
-
-        case CheckFrequency_Volatile:
-//            for (i = 0; i < MATRIX_ROWS; i++) {
-//                thisValue = 0;
-//                for (j = 0; j < MATRIX_COLS; j++) {
-//                    thisValue += vector[j] * matrix[i][j];
-//                    SimpleSyncQueue_Enqueue(&simpleSyncQueue, thisValue);
-//                }
-//
-//                simpleSyncQueue.currentValue = thisValue;
-//                simpleSyncQueue.checkState = 0;
-//
-//                while (simpleSyncQueue.checkState == 0){
-//                    asm("pause");
-//                }
-//
-//                // Pretend Volatile store
-//                producerVectorResult[i] = thisValue;
-//            }
-            for (i = 0; i < MATRIX_ROWS; i++) {
-                thisValue = j = 0;
-                // this is one BIG assumption: SIMPLE_SYNC_QUEUE_SIZE < MATRIX_COLS
-                newLimit = SIMPLE_SYNC_QUEUE_SIZE;
 
                 do {
                     for (; j < newLimit; j++) {
@@ -260,10 +181,54 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                         asm("pause");
                     }
 
-                    // diff calculated with current enqPtr
-//                    newLimit += SIMPLE_SYNC_QUEUE_SIZE -
-//                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.deqPtr + simpleSyncQueue.enqPtr) %
-//                                SIMPLE_SYNC_QUEUE_SIZE; // a bit slower than below version
+                    localDeqPtr = simpleSyncQueue.deqPtr;
+                    newLimit += simpleSyncQueue.enqPtr >= localDeqPtr ?
+                                (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
+                                localDeqPtr - simpleSyncQueue.enqPtr;
+
+                } while (newLimit < MATRIX_COLS);
+
+                // iterations left
+                for (; j < MATRIX_COLS; j++) {
+                    thisValue += vector[j] * matrix[i][j];
+                    simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                    simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+                }
+
+                producerVectorResult[i] = thisValue;
+
+                nextEnq = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+                while (simpleSyncQueue.content[nextEnq] != ALREADY_CONSUMED) {
+                    asm("pause");
+                }
+
+                localDeqPtr = simpleSyncQueue.deqPtr;
+                newLimit = simpleSyncQueue.enqPtr >= localDeqPtr ?
+                           (SIMPLE_SYNC_QUEUE_SIZE - simpleSyncQueue.enqPtr) + localDeqPtr :
+                           localDeqPtr - simpleSyncQueue.enqPtr;
+
+            }
+            break;
+
+        case CheckFrequency_RHT_Volatiles:
+            newLimit = SIMPLE_SYNC_QUEUE_SIZE;
+
+            for (i = 0; i < MATRIX_ROWS; i++) {
+                thisValue = j = 0;
+                // this is one BIG assumption: SIMPLE_SYNC_QUEUE_SIZE < MATRIX_COLS
+
+                do {
+                    for (; j < newLimit; j++) {
+                        thisValue += vector[j] * matrix[i][j];
+                        simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
+                        simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+                    }
+
+                    nextEnq = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+
+                    while (simpleSyncQueue.content[nextEnq] != ALREADY_CONSUMED) {
+                        asm("pause");
+                    }
 
                     localDeqPtr = simpleSyncQueue.deqPtr;
                     newLimit += simpleSyncQueue.enqPtr >= localDeqPtr ?
@@ -276,7 +241,26 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                 for (; j < MATRIX_COLS; j++) {
                     thisValue += vector[j] * matrix[i][j];
                     simpleSyncQueue.content[simpleSyncQueue.enqPtr] = thisValue;
-                    simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr +1) %  SIMPLE_SYNC_QUEUE_SIZE;
+                    simpleSyncQueue.enqPtr = (simpleSyncQueue.enqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE;
+                }
+
+                simpleSyncQueue.currentValue = thisValue;
+                simpleSyncQueue.checkState = 0;
+                while (simpleSyncQueue.checkState == 0) {
+                    asm("pause");
+                }
+                // Pretend Volatile store
+                producerVectorResult[i] = thisValue;
+                newLimit = SIMPLE_SYNC_QUEUE_SIZE;
+            }
+            break;
+
+        case CheckFrequency_Volatile:
+            for (i = 0; i < MATRIX_ROWS; i++) {
+                thisValue = 0;
+                for (j = 0; j < MATRIX_COLS; j++) {
+                    thisValue += vector[j] * matrix[i][j];
+                    SimpleSyncQueue_Enqueue(&simpleSyncQueue, thisValue);
                 }
 
                 simpleSyncQueue.currentValue = thisValue;
@@ -289,6 +273,7 @@ void Vector_Matrix_SimpleSyncQueue_Producer(void* arg) {
                 // Pretend Volatile store
                 producerVectorResult[i] = thisValue;
             }
+
             break;
 
         case CheckFrequency_VolatileEncoding:
@@ -334,14 +319,47 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
     SetThreadAffinity(_thread_id);
 
     switch (checkFrequency) {
+        case CheckFrequency_RHT_NoVolatiles:
+            for (i = 0; i < MATRIX_ROWS; i++) {
+                thisValue = 0;
+                for (j = 0; j < MATRIX_COLS;
+                     j++, simpleSyncQueue.content[simpleSyncQueue.deqPtr] = ALREADY_CONSUMED,
+                             simpleSyncQueue.deqPtr = (simpleSyncQueue.deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE) {
+
+                    thisValue += vector[j] * matrix[i][j];
+                    otherValue = simpleSyncQueue.content[simpleSyncQueue.deqPtr];
+
+                    if (thisValue != otherValue) {
+                        // des-sync of the queue
+                        if (otherValue == ALREADY_CONSUMED) {
+                            //consumerCount++;
+                            do {
+                                asm("pause");
+                            } while (simpleSyncQueue.content[simpleSyncQueue.deqPtr] == ALREADY_CONSUMED);
+
+                            otherValue = simpleSyncQueue.content[simpleSyncQueue.deqPtr];
+
+                            if (thisValue == otherValue)
+                                continue;
+                        }
+
+                        printf("\n\n SOFT ERROR DETECTED, %ld vs %ld Producer: %ld -- Consumer: %ld, diff: %ld \n",
+                               thisValue, otherValue, producerCount, consumerCount, producerCount - consumerCount);
+                        exit(1);
+                    }
+                }
+                consumerVectorResult[i] = thisValue;
+            }
+            break;
+
         case CheckFrequency_Volatile:
-        case CheckFrequency_VolatileNoSync:
+        case CheckFrequency_RHT_Volatiles:
         case CheckFrequency_VolatileNoSyncNoModulo:
             for (i = 0; i < MATRIX_ROWS; i++) {
                 thisValue = 0;
                 for (j = 0; j < MATRIX_COLS;
                      j++, simpleSyncQueue.content[simpleSyncQueue.deqPtr] = ALREADY_CONSUMED,
-                          simpleSyncQueue.deqPtr = (simpleSyncQueue.deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE) {
+                             simpleSyncQueue.deqPtr = (simpleSyncQueue.deqPtr + 1) % SIMPLE_SYNC_QUEUE_SIZE) {
 
                     thisValue += vector[j] * matrix[i][j];
                     otherValue = simpleSyncQueue.content[simpleSyncQueue.deqPtr];
@@ -375,9 +393,9 @@ void Vector_Matrix_SimpleSyncQueue_Consumer(void *arg) {
                     exit(1);
                 }
 
-//                // Pretend Volatile Store
-                consumerVectorResult[i] = thisValue;
                 simpleSyncQueue.checkState = 1;
+                // Pretend Volatile Store
+                consumerVectorResult[i] = thisValue;
             }
             break;
 
@@ -601,8 +619,11 @@ void Vector_Matrix_MultAux(ExecMode executionMode, int producerCore, int consume
         case CheckFrequency_Volatile:
             sprintf(checkFrequencyStr, "checking synchronously volatile stores");
             break;
-        case CheckFrequency_VolatileNoSync:
-            sprintf(checkFrequencyStr, "synchronously on volatile stores no sync");
+        case CheckFrequency_RHT_Volatiles:
+            sprintf(checkFrequencyStr, "RHT with volatile stores");
+            break;
+        case CheckFrequency_RHT_NoVolatiles:
+            sprintf(checkFrequencyStr, "RHT with NO volatile stores");
             break;
         case CheckFrequency_VolatileNoSyncNoModulo:
             sprintf(checkFrequencyStr, "synchronously on volatile stores no sync no modulo");
@@ -642,11 +663,11 @@ void Vector_Matrix_Mult(int producerCore, int consumerCore, int producerCoreHT, 
 //    printf("--------------- Simple Sync Queue Info, Size: %d \n\n", SIMPLE_SYNC_QUEUE_SIZE);
     Global_SetQueueType(QueueType_SimpleSync);
 
-    Global_SetCheckFrequency(CheckFrequency_Volatile);
+    Global_SetCheckFrequency(CheckFrequency_RHT_NoVolatiles);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCoreHT, consumerCoreHT);
 
-    Global_SetCheckFrequency(CheckFrequency_VolatileNoSync);
+    Global_SetCheckFrequency(CheckFrequency_RHT_Volatiles);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCore, consumerCore);
     Vector_Matrix_MultAux(ExeMode_replicatedThreads, producerCoreHT, consumerCoreHT);
 

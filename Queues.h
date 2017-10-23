@@ -43,8 +43,9 @@ typedef enum {
     CheckFrequency_SynchronousOneVar,
     CheckFrequency_SynchronousTwoVars,
     CheckFrequency_SynchronousQueue,
+    CheckFrequency_RHT_NoVolatiles,
     CheckFrequency_Volatile,
-    CheckFrequency_VolatileNoSync,
+    CheckFrequency_RHT_Volatiles,
     CheckFrequency_VolatileNoSyncNoModulo,
     CheckFrequency_VolatileEncoding,
 
