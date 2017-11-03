@@ -35,6 +35,12 @@ int main(int argc, char **argv){
 }
 
 /*
+  Try to see how much do we gain by not writing back ALREADY CONSUMED on consumer, the producer has to change a bit.
+  Then try to see how to accomplish that, using just the pointers.
+  Try to apply the technique to HPCCG.
+ * */
+
+/*
  How can we bring TSX to the table again? maybe just for the non-volatile stores, since most of the times the consumer
  just reads the values. He can read it first, start a transaction, calculate its own value and the compare... something
  like that.

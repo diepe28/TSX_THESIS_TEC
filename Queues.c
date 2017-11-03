@@ -106,9 +106,9 @@ SimpleSyncQueue SimpleSyncQueue_Init(){
     for(; i < SIMPLE_SYNC_QUEUE_SIZE; i++){
         this.content[i] = ALREADY_CONSUMED;
     }
-    this.currentValue = ALREADY_CONSUMED;
+    this.volatileValue = ALREADY_CONSUMED;
     this.checkState = 1;
-    this.enqPtr = this.deqPtr = this.waiting = 0;
+    this.enqPtr = this.deqPtr = 0;
     return this;
 }
 

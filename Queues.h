@@ -33,7 +33,7 @@
 //#define SIMPLE_SYNC_QUEUE_SIZE 8192
 //#define SIMPLE_SYNC_QUEUE_SIZE 16384
 
-#define ALREADY_CONSUMED -2
+#define ALREADY_CONSUMED -1
 #define NUM_RUNS 5
 #define MODULO 5
 
@@ -46,6 +46,7 @@ typedef enum {
     CheckFrequency_RHT_NoVolatiles,
     CheckFrequency_Volatile,
     CheckFrequency_RHT_Volatiles,
+    CheckFrequency_RHT_VolatilesImproved,
     CheckFrequency_VolatileNoSyncNoModulo,
     CheckFrequency_VolatileEncoding,
 
@@ -112,11 +113,9 @@ typedef struct{
     double padding1[15];
     volatile long* content;
     double padding2[15];
-    volatile int checkState; // 0 not verified, 1 no soft error
+    volatile int checkState;
     double padding3[15];
-    volatile long currentValue;
-    double padding4[15];
-    int waiting;
+    volatile long volatileValue;
 }SimpleSyncQueue;
 
 SimpleSyncQueue SimpleSyncQueue_Init();
